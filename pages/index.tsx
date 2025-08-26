@@ -10,6 +10,7 @@ import Header from '../components/layout/Header';
 import { useDevice } from '../hooks/useDevice';
 
 
+
 // 地図コンポーネントを動的インポート（SSR対応）
 const MapView = dynamic(() => import('../components/search/MapView'), {
   ssr: false,
@@ -239,6 +240,7 @@ const SearchFilterComponent: React.FC<{
   const [selectedServices, setSelectedServices] = useState<number[]>(initialFilters?.serviceIds || []);
   const [availabilityOnly, setAvailabilityOnly] = useState(initialFilters?.availabilityOnly || false);
   const [showServiceFilter, setShowServiceFilter] = useState(false);
+  const { isMobile } = useDevice(); // デバイス判定フックを使用
 
   // 初期値が設定された場合の処理
   useEffect(() => {
@@ -515,7 +517,16 @@ const SearchFilterComponent: React.FC<{
           </div>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'left', justifyContent: 'center', gap: '3rem', marginTop: '1.5rem' }}>
+
+<div style={{ 
+          display: 'flex', 
+          alignItems: 'left', 
+          justifyContent: 'center', 
+          gap: '3rem', 
+          marginTop: '1.5rem',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'center' : 'left'
+        }}>
           <label className="filter-checkbox-container">
             <input
               type="checkbox"
@@ -1444,56 +1455,117 @@ const HomePage: React.FC = () => {
           </section>
         )}
         
-        {/* 検索セクション */}
-        <div className="search-section">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h2 className="services-title" style={{ margin: 0 }}>
-              {isBookmarkMode ? 'ブックマークした事業所' : '事業所を検索'}
-            </h2>
-            
-            {isLoggedIn && (
-              <button
-                onClick={handleShowBookmarks}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0.5rem 1rem',
-                  borderRadius: '0.5rem',
-                  border: 'none',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  background: isBookmarkMode ?'#22c55e':'#eab308',
-                  color: isBookmarkMode ? 'white' : '#374151'
-                }}
-              >
-                {isBookmarkMode ? '★' : '☆'} {isBookmarkMode ? '全体検索に戻る' : 'ブックマークを表示する'}
-              </button>
-            )}
-          </div>
 
-          {isBookmarkMode && (
-            <div style={{ 
-              marginBottom: '1.5rem', 
-              padding: '1rem', 
-              background: '#fef3c7', 
-              border: '1px solid #fbbf24', 
-              borderRadius: '0.5rem' 
-            }}>
-              <p style={{ fontSize: '0.875rem', color: '#92400e', margin: 0 }}>
-                📌 ブックマークした事業所を表示しています
-              </p>
-            </div>
-          )}
 
-          {!isBookmarkMode && (
-            <SearchFilterComponent 
-              onSearch={handleSearch} 
-              loading={loading}
-              initialFilters={initialFilters}
-            />
-          )}
-        </div>
+      {/* 検索セクション */}
+      <div className="search-section">
+      {/* タブヘッダー */}
+      <div style={{ 
+       borderBottom: '2px solid #f3f4f6',
+       marginBottom: '2rem'
+      }}>
+      <div style={{ 
+      display: 'flex',
+      gap: 0
+      }}>
+      {/* 事業所を検索タブ */}
+      <button
+        onClick={() => setIsBookmarkMode(false)}
+        style={{
+          flex: 1,
+          padding: '1rem 2rem',
+          border: 'none',
+          background: !isBookmarkMode ? 'white' : '#f9fafb',
+          borderBottom: !isBookmarkMode ? '2px solid #22c55e' : '2px solid transparent',
+          borderTop: !isBookmarkMode ? '1px solid #e5e7eb' : 'none',
+          borderLeft: !isBookmarkMode ? '1px solid #e5e7eb' : 'none',
+          borderRight: !isBookmarkMode ? '1px solid #e5e7eb' : 'none',
+          borderRadius: !isBookmarkMode ? '0.5rem 0.5rem 0 0' : '0',
+          fontSize: '1.125rem',
+          fontWeight: !isBookmarkMode ? '600' : '400',
+          color: !isBookmarkMode ? '#22c55e' : '#6b7280',
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+          position: 'relative',
+          zIndex: !isBookmarkMode ? 2 : 1
+        }}
+      >
+        <span style={{ marginRight: '0.5rem' }}></span>
+        事業所を検索
+      </button>
+
+      {/* ブックマークタブ */}
+      <button
+        onClick={handleShowBookmarks}
+        disabled={!isLoggedIn}
+        style={{
+          flex: 1,
+          padding: '1rem 2rem',
+          border: 'none',
+          background: isBookmarkMode ? 'white' : '#f9fafb',
+          borderBottom: isBookmarkMode ? '2px solid #22c55e' : '2px solid transparent',
+          borderTop: isBookmarkMode ? '1px solid #e5e7eb' : 'none',
+          borderLeft: isBookmarkMode ? '1px solid #e5e7eb' : 'none',
+          borderRight: isBookmarkMode ? '1px solid #e5e7eb' : 'none',
+          borderRadius: isBookmarkMode ? '0.5rem 0.5rem 0 0' : '0',
+          fontSize: '1.125rem',
+          fontWeight: isBookmarkMode ? '600' : '400',
+          color: isBookmarkMode ? '#22c55e' : (!isLoggedIn ? '#d1d5db' : '#6b7280'),
+          cursor: !isLoggedIn ? 'not-allowed' : 'pointer',
+          transition: 'all 0.2s',
+          position: 'relative',
+          zIndex: isBookmarkMode ? 2 : 1,
+          opacity: !isLoggedIn ? 0.5 : 1
+        }}
+      >
+        <span style={{ marginRight: '0.5rem' }}>
+          {isBookmarkMode ? '★' : '☆'}
+        </span>
+        ブックマーク
+        {!isLoggedIn && (
+          <span style={{ 
+            fontSize: '0.75rem', 
+            marginLeft: '0.5rem',
+            color: '#9ca3af'
+          }}>
+            (ログイン必要)
+          </span>
+        )}
+      </button>
+    </div>
+  </div>
+
+  {/* タブコンテンツ */}
+  <div style={{
+    background: 'white',
+    padding: '1.5rem',
+    borderRadius: '0 0 0.5rem 0.5rem',
+    border: '1px solid #e5e7eb',
+    borderTop: 'none'
+  }}>
+    {isBookmarkMode && (
+      <div style={{ 
+        marginBottom: '1.5rem', 
+        padding: '1rem', 
+        background: '#fef3c7', 
+        border: '1px solid #fbbf24', 
+        borderRadius: '0.5rem' 
+      }}>
+        <p style={{ fontSize: '0.875rem', color: '#92400e', margin: 0 }}>
+          📌 ブックマークした事業所を表示しています
+        </p>
+      </div>
+    )}
+
+    {!isBookmarkMode && (
+      <SearchFilterComponent 
+        onSearch={handleSearch} 
+        loading={loading}
+        initialFilters={initialFilters}
+      />
+    )}
+  </div>
+</div>
 
         {/* 検索結果 */}
         {hasSearched && (
