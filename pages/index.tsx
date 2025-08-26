@@ -9,8 +9,6 @@ import { useBookmarks } from '@/lib/hooks/useBookmarks';
 import Header from '../components/layout/Header';
 import { useDevice } from '../hooks/useDevice';
 
-
-
 // 地図コンポーネントを動的インポート（SSR対応）
 const MapView = dynamic(() => import('../components/search/MapView'), {
   ssr: false,
@@ -517,8 +515,7 @@ const SearchFilterComponent: React.FC<{
           </div>
         )}
 
-
-<div style={{ 
+        <div style={{ 
           display: 'flex', 
           alignItems: 'left', 
           justifyContent: 'center', 
@@ -532,14 +529,14 @@ const SearchFilterComponent: React.FC<{
               type="checkbox"
               className="filter-checkbox"
               style={{ 
-                width: '20px',      
-                height: '20px',     
+                width: '16px',      
+                height: '16px',     
                 transform: 'scale(1.2)' 
               }}
               checked={availabilityOnly}
               onChange={(e) => setAvailabilityOnly(e.target.checked)}
             />
-            <span className="filter-checkbox-label" style={{ fontSize: '1.5rem', fontWeight: '500' }}>空きのある事務所</span>
+            <span className="filter-checkbox-label" style={{ fontSize: '1.25rem', fontWeight: '500' }}>空きのある事務所のみ</span>
           </label>
           <button
             type="submit"
@@ -555,7 +552,6 @@ const SearchFilterComponent: React.FC<{
 };
 
 // ページネーションコンポーネント
-// ブックマーク機能付きFacilityCardコンポーネント（検索状態保持対応）
 const Pagination: React.FC<{
   pagination: SearchResponse['pagination'];
   onPageChange: (page: number) => void;
@@ -822,7 +818,6 @@ const FacilityCard: React.FC<{
       </div>
     );
   }
-
 
   // PC・タブレット版は既存の表示を維持
   return (
@@ -1137,16 +1132,12 @@ const SearchResults: React.FC<{
   );
 };
 
-
-
 // メインページ（検索状態復元機能付き）
-// 以下は（最後の1行を除き）メインについて
-// コードを捜索中の時のための目印
-
 const HomePage: React.FC = () => {
   const router = useRouter();
   const { user, loading: authLoading, signOut } = useAuthContext();
   const { bookmarks, refreshBookmarks, isBookmarked, toggleBookmark } = useBookmarks();
+  const { isMobile } = useDevice(); // デバイス判定フックを使用
   
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [pagination, setPagination] = useState<SearchResponse['pagination'] | null>(null);
@@ -1175,7 +1166,7 @@ const HomePage: React.FC = () => {
         // ページ情報を取得
         const page = parseInt((router.query.page as string) || '1');
         
-        console.log('🔄 URLから検索条件を復元:', { filters, page });
+        console.log('📄 URLから検索条件を復元:', { filters, page });
         
         setInitialFilters(filters);
         setLastSearchFilters(filters);
@@ -1230,84 +1221,75 @@ const HomePage: React.FC = () => {
       return;
     }
     
-    const newBookmarkMode = !isBookmarkMode;
-    setIsBookmarkMode(newBookmarkMode);
-
-    if (newBookmarkMode) {
-      setLoading(true);
-      setError(null);
-      setHasSearched(true); 
-      console.log('📖 ブックマーク表示開始...');
+    // ブックマークモードに切り替え
+    setIsBookmarkMode(true);
+    setLoading(true);
+    setError(null);
+    setHasSearched(true); 
+    console.log('📖 ブックマーク表示開始...');
+    
+    // URLからクエリパラメータを削除（但しsearchParamsStringは保持）
+    router.replace('/', undefined, { shallow: true });
+    
+    try {
+      await refreshBookmarks();
       
-      // URLからクエリパラメータを削除（但しsearchParamsStringは保持）
-      router.replace('/', undefined, { shallow: true });
-      
-      try {
-        await refreshBookmarks();
-        
-        setTimeout(async () => {
-          try {
-            console.log('現在のブックマーク:', bookmarks);
-            
-            if (bookmarks.length === 0) {
-              console.log('ブックマークが0件');
-              setFacilities([]);
-              setPagination(null);
-              setLoading(false);
-              return;
-            }
-            
-            const bookmarkedFacilityIds = bookmarks.map(bookmark => parseInt(bookmark.facility));
-            console.log('ブックマーク事業所ID:', bookmarkedFacilityIds);
-
-            const params = new URLSearchParams();
-            params.append('facility_ids', JSON.stringify(bookmarkedFacilityIds));
-            
-            console.log('API呼び出し開始...');
-            const response = await fetch(`/api/search/facilities?${params.toString()}`);
-            
-            if (!response.ok) {
-              throw new Error(`API エラー: ${response.status}`);
-            }
-
-            const data: SearchResponse = await response.json();
-            
-            console.log(`✅ 取得完了: ${data.facilities?.length || 0} 件`);
-
-            if (data.facilities && data.facilities.length > 0) {
-              setFacilities(data.facilities);
-              setPagination(data.pagination);
-            } else {
-              console.log('❌ ブックマークした事業所が見つかりません');
-              setFacilities([]);
-              setPagination(null);
-              setError('ブックマークした事業所が見つかりませんでした。削除された可能性があります。');
-            }
-            
-            setLoading(false);
-            
-          } catch (err) {
-            console.error('❌ 事業所取得エラー:', err);
-            setError(err instanceof Error ? err.message : 'ブックマークした事業所の取得に失敗しました');
+      setTimeout(async () => {
+        try {
+          console.log('現在のブックマーク:', bookmarks);
+          
+          if (bookmarks.length === 0) {
+            console.log('ブックマークが0件');
             setFacilities([]);
             setPagination(null);
             setLoading(false);
+            return;
           }
-        }, 100);
-        
-      } catch (err) {
-        console.error('❌ ブックマーク表示エラー:', err);
-        setError(err instanceof Error ? err.message : 'ブックマークの取得中にエラーが発生しました');
-        setFacilities([]);
-        setPagination(null);
-        setLoading(false);
-      }
-    } else {
-      // ブックマークモードを終了する場合、最後の検索条件があれば復元
-      console.log('🔄 ブックマークモード終了、検索状態を復元:', { lastSearchFilters, searchParamsString });
-      if (lastSearchFilters) {
-        await executeSearch(lastSearchFilters, 1);
-      }
+          
+          const bookmarkedFacilityIds = bookmarks.map(bookmark => parseInt(bookmark.facility));
+          console.log('ブックマーク事業所ID:', bookmarkedFacilityIds);
+
+          const params = new URLSearchParams();
+          params.append('facility_ids', JSON.stringify(bookmarkedFacilityIds));
+          
+          console.log('API呼び出し開始...');
+          const response = await fetch(`/api/search/facilities?${params.toString()}`);
+          
+          if (!response.ok) {
+            throw new Error(`API エラー: ${response.status}`);
+          }
+
+          const data: SearchResponse = await response.json();
+          
+          console.log(`✅ 取得完了: ${data.facilities?.length || 0} 件`);
+
+          if (data.facilities && data.facilities.length > 0) {
+            setFacilities(data.facilities);
+            setPagination(data.pagination);
+          } else {
+            console.log('❌ ブックマークした事業所が見つかりません');
+            setFacilities([]);
+            setPagination(null);
+            setError('ブックマークした事業所が見つかりませんでした。削除された可能性があります。');
+          }
+          
+          setLoading(false);
+          
+        } catch (err) {
+          console.error('❌ 事業所取得エラー:', err);
+          setError(err instanceof Error ? err.message : 'ブックマークした事業所の取得に失敗しました');
+          setFacilities([]);
+          setPagination(null);
+          setLoading(false);
+        }
+      }, 100);
+      
+    } catch (err) {
+      console.error('❌ ブックマーク表示エラー:', err);
+      setError(err instanceof Error ? err.message : 'ブックマークの取得中にエラーが発生しました');
+      setFacilities([]);
+      setPagination(null);
+      setLoading(false);
     }
   };
 
@@ -1418,8 +1400,6 @@ const HomePage: React.FC = () => {
     }
   };
 
-//以上、const(関数たち)
-//以下はreturn
   return (
     <div className="min-h-screen bg-gray-50">
       <Head>
@@ -1432,10 +1412,10 @@ const HomePage: React.FC = () => {
 
       {/* ヘッダー */}
       <Header 
-      isLoggedIn={isLoggedIn}
-      signOut={signOut}
-      variant="home"           // ホームページ仕様
-      showContactButton={true} // お問い合わせボタン表示
+        isLoggedIn={isLoggedIn}
+        signOut={signOut}
+        variant="home"           // ホームページ仕様
+        showContactButton={true} // お問い合わせボタン表示
       />
 
       {/* メインコンテンツ */}
@@ -1455,117 +1435,173 @@ const HomePage: React.FC = () => {
           </section>
         )}
         
-
-
-      {/* 検索セクション */}
-      <div className="search-section">
-      {/* タブヘッダー */}
-      <div style={{ 
-       borderBottom: '2px solid #f3f4f6',
-       marginBottom: '2rem'
-      }}>
-      <div style={{ 
-      display: 'flex',
-      gap: 0
-      }}>
-      {/* 事業所を検索タブ */}
-      <button
-        onClick={() => setIsBookmarkMode(false)}
-        style={{
-          flex: 1,
-          padding: '1rem 2rem',
-          border: 'none',
-          background: !isBookmarkMode ? 'white' : '#f9fafb',
-          borderBottom: !isBookmarkMode ? '2px solid #22c55e' : '2px solid transparent',
-          borderTop: !isBookmarkMode ? '1px solid #e5e7eb' : 'none',
-          borderLeft: !isBookmarkMode ? '1px solid #e5e7eb' : 'none',
-          borderRight: !isBookmarkMode ? '1px solid #e5e7eb' : 'none',
-          borderRadius: !isBookmarkMode ? '0.5rem 0.5rem 0 0' : '0',
-          fontSize: '1.125rem',
-          fontWeight: !isBookmarkMode ? '600' : '400',
-          color: !isBookmarkMode ? '#22c55e' : '#6b7280',
-          cursor: 'pointer',
-          transition: 'all 0.2s',
-          position: 'relative',
-          zIndex: !isBookmarkMode ? 2 : 1
-        }}
-      >
-        <span style={{ marginRight: '0.5rem' }}></span>
-        事業所を検索
-      </button>
-
-      {/* ブックマークタブ */}
-      <button
-        onClick={handleShowBookmarks}
-        disabled={!isLoggedIn}
-        style={{
-          flex: 1,
-          padding: '1rem 2rem',
-          border: 'none',
-          background: isBookmarkMode ? 'white' : '#f9fafb',
-          borderBottom: isBookmarkMode ? '2px solid #22c55e' : '2px solid transparent',
-          borderTop: isBookmarkMode ? '1px solid #e5e7eb' : 'none',
-          borderLeft: isBookmarkMode ? '1px solid #e5e7eb' : 'none',
-          borderRight: isBookmarkMode ? '1px solid #e5e7eb' : 'none',
-          borderRadius: isBookmarkMode ? '0.5rem 0.5rem 0 0' : '0',
-          fontSize: '1.125rem',
-          fontWeight: isBookmarkMode ? '600' : '400',
-          color: isBookmarkMode ? '#22c55e' : (!isLoggedIn ? '#d1d5db' : '#6b7280'),
-          cursor: !isLoggedIn ? 'not-allowed' : 'pointer',
-          transition: 'all 0.2s',
-          position: 'relative',
-          zIndex: isBookmarkMode ? 2 : 1,
-          opacity: !isLoggedIn ? 0.5 : 1
-        }}
-      >
-        <span style={{ marginRight: '0.5rem' }}>
-          {isBookmarkMode ? '★' : '☆'}
-        </span>
-        ブックマーク
-        {!isLoggedIn && (
-          <span style={{ 
-            fontSize: '0.75rem', 
-            marginLeft: '0.5rem',
-            color: '#9ca3af'
+        {/* 検索セクション - タブ形式UI */}
+        <div className="search-section">
+          {/* タブヘッダー */}
+          <div style={{ 
+            borderBottom: '2px solid #f3f4f6',
+            marginBottom: '2rem'
           }}>
-            (ログイン必要)
-          </span>
-        )}
-      </button>
-    </div>
-  </div>
+            <div style={{ 
+              display: 'flex',
+              gap: 0
+            }}>
+              {/* 事業所を検索タブ */}
+              <button
+                onClick={() => {
+                  if (isBookmarkMode) {
+                    setIsBookmarkMode(false);
+                    setHasSearched(false);
+                    setFacilities([]);
+                    setPagination(null);
+                    setError(null);
+                    // URLをクリア
+                    router.replace('/', undefined, { shallow: true });
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  padding: isMobile ? '0.75rem 0.5rem' : '1rem 2rem',
+                  border: 'none',
+                  background: !isBookmarkMode ? 'white' : '#f9fafb',
+                  borderBottom: !isBookmarkMode ? '2px solid #22c55e' : '2px solid transparent',
+                  borderTop: !isBookmarkMode ? '1px solid #e5e7eb' : 'none',
+                  borderLeft: !isBookmarkMode ? '1px solid #e5e7eb' : 'none',
+                  borderRight: !isBookmarkMode ? '1px solid #e5e7eb' : 'none',
+                  borderRadius: !isBookmarkMode ? '0.5rem 0.5rem 0 0' : '0',
+                  fontSize: isMobile ? '0.9rem' : '1.125rem',
+                  fontWeight: !isBookmarkMode ? '600' : '400',
+                  color: !isBookmarkMode ? '#22c55e' : '#6b7280',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  position: 'relative',
+                  zIndex: !isBookmarkMode ? 2 : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: isMobile ? '0.2rem' : '0.25rem'
+                }}
+              >
+                <span style={{ fontSize: isMobile ? '1rem' : '1.2rem' }}>🔍</span>
+                <span>事業所を検索</span>
+              </button>
 
-  {/* タブコンテンツ */}
-  <div style={{
-    background: 'white',
-    padding: '1.5rem',
-    borderRadius: '0 0 0.5rem 0.5rem',
-    border: '1px solid #e5e7eb',
-    borderTop: 'none'
-  }}>
-    {isBookmarkMode && (
-      <div style={{ 
-        marginBottom: '1.5rem', 
-        padding: '1rem', 
-        background: '#fef3c7', 
-        border: '1px solid #fbbf24', 
-        borderRadius: '0.5rem' 
-      }}>
-        <p style={{ fontSize: '0.875rem', color: '#92400e', margin: 0 }}>
-          📌 ブックマークした事業所を表示しています
-        </p>
-      </div>
-    )}
+              {/* ブックマークタブ */}
+              {isLoggedIn ? (
+                <button
+                  onClick={handleShowBookmarks}
+                  style={{
+                    flex: 1,
+                    padding: isMobile ? '0.75rem 0.5rem' : '1rem 2rem',
+                    border: 'none',
+                    background: isBookmarkMode ? 'white' : '#f9fafb',
+                    borderBottom: isBookmarkMode ? '2px solid #22c55e' : '2px solid transparent',
+                    borderTop: isBookmarkMode ? '1px solid #e5e7eb' : 'none',
+                    borderLeft: isBookmarkMode ? '1px solid #e5e7eb' : 'none',
+                    borderRight: isBookmarkMode ? '1px solid #e5e7eb' : 'none',
+                    borderRadius: isBookmarkMode ? '0.5rem 0.5rem 0 0' : '0',
+                    fontSize: isMobile ? '0.9rem' : '1.125rem',
+                    fontWeight: isBookmarkMode ? '600' : '400',
+                    color: isBookmarkMode ? '#22c55e' : '#6b7280',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    position: 'relative',
+                    zIndex: isBookmarkMode ? 2 : 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: isMobile ? '0.2rem' : '0.25rem'
+                  }}
+                >
+                  <span style={{ fontSize: isMobile ? '1rem' : '1.2rem' }}>
+                    {isBookmarkMode ? '★' : '☆'}
+                  </span>
+                  <span>ブックマーク</span>
+                </button>
+              ) : (
+                // ログインしていない場合のブックマークタブ（視覚的フィードバック強化型）
+                <div
+                  onClick={() => router.push('/auth/login')}
+                  style={{
+                    flex: 1,
+                    padding: isMobile ? '0.75rem 0.5rem' : '1rem 2rem',
+                    background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                    borderBottom: '2px solid #e2e8f0',
+                    borderRadius: '0',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    position: 'relative',
+                    zIndex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: isMobile ? '0.2rem' : '0.25rem'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
+                  }}
+                >
+                  <span style={{ 
+                    fontSize: isMobile ? '1.1rem' : '1.3rem', 
+                    opacity: 0.7,
+                    color: '#64748b'
+                  }}>
+                    🔒
+                  </span>
+                  <span style={{ 
+                    fontSize: isMobile ? '0.85rem' : '1.125rem',
+                    fontWeight: '500',
+                    color: '#475569'
+                  }}>
+                    ブックマーク
+                  </span>
+                  <span style={{ 
+                    fontSize: isMobile ? '0.7rem' : '0.75rem',
+                    color: '#94a3b8',
+                    textAlign: 'center',
+                    lineHeight: 1.2
+                  }}>
+                    {isMobile ? 'ログインで利用' : 'ログインが必要です'}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
 
-    {!isBookmarkMode && (
-      <SearchFilterComponent 
-        onSearch={handleSearch} 
-        loading={loading}
-        initialFilters={initialFilters}
-      />
-    )}
-  </div>
-</div>
+          {/* タブコンテンツ */}
+          <div style={{
+            background: 'white',
+            padding: '1.5rem',
+            borderRadius: '0 0 0.5rem 0.5rem',
+            border: '1px solid #e5e7eb',
+            borderTop: 'none'
+          }}>
+            {isBookmarkMode && (
+              <div style={{ 
+                marginBottom: '1.5rem', 
+                padding: '1rem', 
+                background: '#fef3c7', 
+                border: '1px solid #fbbf24', 
+                borderRadius: '0.5rem' 
+              }}>
+                <p style={{ fontSize: '0.875rem', color: '#92400e', margin: 0 }}>
+                  📌 ブックマークした事業所を表示しています
+                </p>
+              </div>
+            )}
+
+            {!isBookmarkMode && (
+              <SearchFilterComponent 
+                onSearch={handleSearch} 
+                loading={loading}
+                initialFilters={initialFilters}
+              />
+            )}
+          </div>
+        </div>
 
         {/* 検索結果 */}
         {hasSearched && (
@@ -1631,16 +1667,16 @@ const HomePage: React.FC = () => {
               © 2025 ケアコネクト. All rights reserved.
             </div>
             <div className="footer-links">
-            <a 
-             href="https://www.wam.go.jp/content/wamnet/pcpub/top/sfkopendata/" 
-             target="_blank"
-             rel="noopener noreferrer"
-            >
-            障害福祉サービス等情報公表システムデータのオープンデータより抜粋して作成
-            </a>
+              <a 
+                href="https://www.wam.go.jp/content/wamnet/pcpub/top/sfkopendata/" 
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                障害福祉サービス等情報公表システムデータのオープンデータより抜粋して作成
+              </a>
             </div>
-        </div>
-      </div> 
+          </div>
+        </div> 
       </footer>
     </div>
   );
