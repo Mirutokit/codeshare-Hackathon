@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { LatLngBounds } from 'leaflet';
+import { useRouter } from 'next/router';
 import 'leaflet/dist/leaflet.css';
 
 
@@ -37,6 +38,21 @@ interface Facility {
   created_at: string;
   updated_at: string;
   services?: Service[];
+}
+
+// MapViewInnerのprops型定義を追加
+interface MapViewInnerProps {
+  facilities: Facility[];
+  loading?: boolean;
+  // 現在の検索パラメータを渡すためのprops
+  searchParams?: {
+    q?: string;
+    district?: string;
+    services?: string;
+    available?: string;
+    page?: string;
+    view?: string;
+  };
 }
 
 // アイコン設定の修正
@@ -119,11 +135,29 @@ const MapBounds: React.FC<{ facilities: Facility[] }> = ({ facilities }) => {
 };
 
 
-// 事業所ポップアップの内容（スマホ対応）
-const FacilityPopup: React.FC<{ facility: Facility }> = ({ facility }) => {
+// 事業所ポップアップの内容（スマホ対応・詳細ページ遷移機能付き）
+const FacilityPopup: React.FC<{ 
+  facility: Facility; 
+  searchParams?: Record<string, string>; 
+}> = ({ facility, searchParams = {} }) => {
+  const router = useRouter();
   const availableServices = facility.services?.filter(s => s.availability === 'available') || [];
   const unavailableServices = facility.services?.filter(s => s.availability === 'unavailable') || [];
   const mobile = isMobile();
+
+  // 詳細ページへの遷移処理
+  const handleViewDetails = () => {
+    // 現在の検索パラメータをクエリストリングとして追加
+    const query = { 
+      id: facility.id.toString(),
+      ...searchParams // 検索条件を引き継ぐ
+    };
+
+    router.push({
+      pathname: '/facilities/[id]',
+      query: query
+    });
+  };
 
   return (
     <div style={{ 
@@ -275,6 +309,7 @@ const FacilityPopup: React.FC<{ facility: Facility }> = ({ facility }) => {
 
       <div style={{ textAlign: 'center' }}>
         <button
+          onClick={handleViewDetails}
           style={{
             background: '#22c55e',
             color: 'white',
@@ -289,9 +324,6 @@ const FacilityPopup: React.FC<{ facility: Facility }> = ({ facility }) => {
           }}
           onMouseOver={(e) => (e.target as HTMLElement).style.background = '#16a34a'}
           onMouseOut={(e) => (e.target as HTMLElement).style.background = '#22c55e'}
-          onClick={() => {
-            console.log('詳細ページへ:', facility.id);
-          }}
         >
           詳細を見る
         </button>
@@ -300,11 +332,12 @@ const FacilityPopup: React.FC<{ facility: Facility }> = ({ facility }) => {
   );
 };
 
-// 実際の地図コンポーネント（スマホ対応）
-const MapViewInner: React.FC<{ 
-  facilities: Facility[];
-  loading?: boolean;
-}> = ({ facilities, loading = false }) => {
+// 実際の地図コンポーネント（スマホ対応・検索パラメータ対応）
+const MapViewInner: React.FC<MapViewInnerProps> = ({ 
+  facilities, 
+  loading = false,
+  searchParams = {}
+}) => {
   const [facilityIcon, setFacilityIcon] = useState<L.Icon | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const [mobile, setMobile] = useState(false);
@@ -339,7 +372,8 @@ const MapViewInner: React.FC<{
     facilities: facilities.length,
     loading,
     facilityIcon: !!facilityIcon,
-    mobile
+    mobile,
+    searchParams
   });
 
   // エラー状態の表示
@@ -450,7 +484,10 @@ const MapViewInner: React.FC<{
                 keepInView={true}
                 autoPanPadding={[10, 10]}
               >
-                <FacilityPopup facility={facility} />
+                <FacilityPopup 
+                  facility={facility} 
+                  searchParams={searchParams}
+                />
               </Popup>
             </Marker>
           ))}

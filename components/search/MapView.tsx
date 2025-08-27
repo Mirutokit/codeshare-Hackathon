@@ -1,5 +1,6 @@
-// components/search/MapView.tsx - 修正版（中央配置対応）
+// components/search/MapView.tsx - 修正版（検索パラメータ対応）
 import React, { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 
 // Leaflet関連のインポートを動的インポートの中で行う
@@ -69,16 +70,37 @@ interface Facility {
  services?: Service[];
 }
 
-// メインMapViewコンポーネント
+// メインMapViewコンポーネント（検索パラメータ対応）
 const MapView: React.FC<{ 
  facilities: Facility[];
  loading?: boolean;
 }> = ({ facilities, loading = false }) => {
+ const router = useRouter();
  const [isClient, setIsClient] = useState(false);
 
  useEffect(() => {
    setIsClient(true);
  }, []);
+
+ // 現在のクエリパラメータを取得（詳細ページ遷移用）
+ const searchParams = useMemo(() => {
+   const { id, ...params } = router.query; // idを除外
+   
+   // string型に変換してオブジェクトを作成
+   const convertedParams: Record<string, string> = {};
+   
+   Object.entries(params).forEach(([key, value]) => {
+     if (value) {
+       if (Array.isArray(value)) {
+         convertedParams[key] = value[0];
+       } else {
+         convertedParams[key] = value;
+       }
+     }
+   });
+   
+   return convertedParams;
+ }, [router.query]);
 
  // 座標を持つ施設のみをフィルタリング
  const validFacilities = useMemo(() => 
@@ -91,7 +113,8 @@ const MapView: React.FC<{
    facilities: facilities.length, 
    validFacilities: validFacilities.length, 
    loading,
-   isClient
+   isClient,
+   searchParams
  });
 
  // クライアントサイドでない場合はローディングを表示
@@ -153,8 +176,12 @@ const MapView: React.FC<{
          </div>
        )}
        
-       {/* 動的に読み込まれる地図コンポーネント */}
-       <DynamicMap facilities={validFacilities} loading={loading} />
+       {/* 動的に読み込まれる地図コンポーネント（検索パラメータを渡す） */}
+       <DynamicMap 
+         facilities={validFacilities} 
+         loading={loading} 
+         searchParams={searchParams}
+       />
        
        {/* 統計情報 */}
        {validFacilities.length > 0 && !loading && (
