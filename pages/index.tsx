@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 import { useAuthContext } from '@/components/providers/AuthProvider';
 import { useBookmarks } from '@/lib/hooks/useBookmarks';
 import Header from '../components/layout/Header';
+import Footer from '../components/layout/Footer';
 import { useDevice } from '../hooks/useDevice';
 
 // 地図コンポーネントを動的インポート（SSR対応）
@@ -1654,30 +1655,10 @@ const HomePage: React.FC = () => {
       </main>
 
       {/* フッター */}
-      <footer className="footer">
-        <div className="container">
-          <div className="footer-content">
-            <Link href="/" passHref legacyBehavior>
-              <a className="footer-logo" style={{ textDecoration: 'none', color: 'inherit' }}>
-                <div className="footer-logo-icon">C</div>
-                <span className="footer-name">ケアコネクト</span>
-              </a>
-            </Link>
-            <div className="footer-copyright">
-              © 2025 ケアコネクト. All rights reserved.
-            </div>
-            <div className="footer-links">
-              <a 
-                href="https://www.wam.go.jp/content/wamnet/pcpub/top/sfkopendata/" 
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                障害福祉サービス等情報公表システムデータのオープンデータより抜粋して作成
-              </a>
-            </div>
-          </div>
-        </div> 
-      </footer>
+      <Footer 
+        isLoggedIn={isLoggedIn}
+        signOut={signOut}
+      />
     </div>
   );
 };

@@ -1,4 +1,4 @@
-// pages/facilities/[id].tsx - 検索状態復元機能付き事業所詳細ページ
+// pages/facilities/[id].tsx - レスポンシブ対応事業所詳細ページ（DM機能付き）
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
@@ -6,7 +6,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useAuthContext } from '@/components/providers/AuthProvider';
 import { useBookmarks } from '@/lib/hooks/useBookmarks';
-import { MapPin, Phone, Globe, MessageCircle, Heart, ArrowLeft, Clock, Users, Star, Building, Calendar, ExternalLink } from 'lucide-react';
+import { useDevice } from '@/hooks/useDevice';
+import Header from '@/components/layout/Header';
+import Footer from '@/components/layout/Footer';
+import { MapPin, Phone, Globe, MessageCircle, Heart, ArrowLeft, Clock, Users, Star, Building, Calendar, ExternalLink, Send, X, Paperclip, Smile } from 'lucide-react';
 import BookmarkIcon from '@/components/ui/BookmarkIcon';
 
 // 型定義
@@ -39,7 +42,6 @@ interface Facility {
   created_at: string;
   updated_at: string;
   services?: Service[];
-  // 詳細ページ用の追加プロパティ
   operating_hours?: string;
   established_date?: string;
   organization_type?: string;
@@ -49,6 +51,14 @@ interface Facility {
   fees_info?: string;
   contact_person?: string;
   email?: string;
+}
+
+interface DMMessage {
+  id: number;
+  content: string;
+  sender: 'user' | 'facility';
+  timestamp: Date;
+  read: boolean;
 }
 
 // ユーティリティ関数
@@ -61,6 +71,364 @@ function formatPhoneNumber(phone: string): string {
   return phone;
 }
 
+// DMモーダルコンポーネント
+const DMModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  facilityName: string;
+  facilityId: number;
+}> = ({ isOpen, onClose, facilityName, facilityId }) => {
+  const { isMobile } = useDevice();
+  const [messages, setMessages] = useState<DMMessage[]>([
+    {
+      id: 1,
+      content: "こんにちは！ご質問やご相談がございましたら、お気軽にメッセージをお送りください。",
+      sender: 'facility',
+      timestamp: new Date(Date.now() - 3600000),
+      read: true
+    }
+  ]);
+  const [newMessage, setNewMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+
+  const handleSendMessage = () => {
+    if (!newMessage.trim()) return;
+
+    const userMessage: DMMessage = {
+      id: messages.length + 1,
+      content: newMessage.trim(),
+      sender: 'user',
+      timestamp: new Date(),
+      read: true
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setNewMessage('');
+
+    // 模擬的な自動返信
+    setIsTyping(true);
+    setTimeout(() => {
+      const facilityResponse: DMMessage = {
+        id: messages.length + 2,
+        content: "メッセージをありがとうございます。担当者が確認次第、詳しくご返信いたします。お急ぎの場合はお電話でもお気軽にお問い合わせください。",
+        sender: 'facility',
+        timestamp: new Date(),
+        read: false
+      };
+      setMessages(prev => [...prev, facilityResponse]);
+      setIsTyping(false);
+    }, 1500);
+  };
+
+  const formatMessageTime = (timestamp: Date) => {
+    const now = new Date();
+    const diff = now.getTime() - timestamp.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return 'たった今';
+    if (minutes < 60) return `${minutes}分前`;
+    if (hours < 24) return `${hours}時間前`;
+    if (days < 7) return `${days}日前`;
+    return timestamp.toLocaleDateString('ja-JP');
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: isMobile ? 'flex-end' : 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+      padding: isMobile ? '0' : '1rem'
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: isMobile ? '1rem 1rem 0 0' : '1rem',
+        width: isMobile ? '100%' : '500px',
+        height: isMobile ? '80vh' : '600px',
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: '0 20px 25px rgba(0, 0, 0, 0.15)',
+        animation: isMobile ? 'slideUp 0.3s ease-out' : 'fadeIn 0.3s ease-out'
+      }}>
+        {/* ヘッダー */}
+        <div style={{
+          padding: '1rem 1.5rem',
+          borderBottom: '1px solid #e5e7eb',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          backgroundColor: '#f8fafc'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              backgroundColor: '#22c55e',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white'
+            }}>
+              <Building size={20} />
+            </div>
+            <div>
+              <h3 style={{ 
+                fontSize: isMobile ? '1rem' : '1.125rem', 
+                fontWeight: '600', 
+                margin: 0, 
+                color: '#111827' 
+              }}>
+                {facilityName}
+              </h3>
+              <p style={{ 
+                fontSize: '0.75rem', 
+                color: '#6b7280', 
+                margin: 0 
+              }}>
+                通常1時間以内に返信
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              border: 'none',
+              backgroundColor: '#f3f4f6',
+              color: '#6b7280',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* メッセージエリア */}
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '1rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem'
+        }}>
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              style={{
+                display: 'flex',
+                justifyContent: message.sender === 'user' ? 'flex-end' : 'flex-start'
+              }}
+            >
+              <div style={{
+                maxWidth: '75%',
+                padding: '0.75rem 1rem',
+                borderRadius: message.sender === 'user' ? '1rem 1rem 0.25rem 1rem' : '1rem 1rem 1rem 0.25rem',
+                backgroundColor: message.sender === 'user' ? '#22c55e' : '#f3f4f6',
+                color: message.sender === 'user' ? 'white' : '#111827',
+                fontSize: '0.875rem',
+                lineHeight: 1.4,
+                position: 'relative'
+              }}>
+                <p style={{ margin: 0 }}>{message.content}</p>
+                <div style={{
+                  fontSize: '0.7rem',
+                  opacity: 0.7,
+                  marginTop: '0.25rem',
+                  textAlign: 'right'
+                }}>
+                  {formatMessageTime(message.timestamp)}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* タイピングインジケーター */}
+          {isTyping && (
+            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+              <div style={{
+                padding: '0.75rem 1rem',
+                borderRadius: '1rem 1rem 1rem 0.25rem',
+                backgroundColor: '#f3f4f6',
+                color: '#6b7280',
+                fontSize: '0.875rem'
+              }}>
+                <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                  <span>入力中</span>
+                  <div style={{ display: 'flex', gap: '0.15rem' }}>
+                    <div style={{
+                      width: '4px',
+                      height: '4px',
+                      borderRadius: '50%',
+                      backgroundColor: '#9ca3af',
+                      animation: 'pulse 1.4s ease-in-out infinite'
+                    }}></div>
+                    <div style={{
+                      width: '4px',
+                      height: '4px',
+                      borderRadius: '50%',
+                      backgroundColor: '#9ca3af',
+                      animation: 'pulse 1.4s ease-in-out 0.2s infinite'
+                    }}></div>
+                    <div style={{
+                      width: '4px',
+                      height: '4px',
+                      borderRadius: '50%',
+                      backgroundColor: '#9ca3af',
+                      animation: 'pulse 1.4s ease-in-out 0.4s infinite'
+                    }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* メッセージ入力エリア */}
+        <div style={{
+          padding: '1rem',
+          borderTop: '1px solid #e5e7eb',
+          backgroundColor: '#f8fafc'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-end',
+            gap: '0.75rem'
+          }}>
+            <div style={{ flex: 1 }}>
+              <textarea
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                placeholder="メッセージを入力..."
+                style={{
+                  width: '100%',
+                  minHeight: '40px',
+                  maxHeight: '120px',
+                  padding: '0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '0.75rem',
+                  fontSize: '0.875rem',
+                  resize: 'none',
+                  outline: 'none',
+                  fontFamily: 'inherit'
+                }}
+                rows={1}
+              />
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginTop: '0.5rem'
+              }}>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button style={{
+                    padding: '0.25rem',
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    color: '#6b7280',
+                    cursor: 'pointer',
+                    borderRadius: '0.25rem'
+                  }}>
+                    <Paperclip size={16} />
+                  </button>
+                  <button style={{
+                    padding: '0.25rem',
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    color: '#6b7280',
+                    cursor: 'pointer',
+                    borderRadius: '0.25rem'
+                  }}>
+                    <Smile size={16} />
+                  </button>
+                </div>
+                <span style={{
+                  fontSize: '0.7rem',
+                  color: '#9ca3af'
+                }}>
+                  Enter で送信
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={handleSendMessage}
+              disabled={!newMessage.trim()}
+              style={{
+                width: '40px',
+                height: '40px',
+                backgroundColor: newMessage.trim() ? '#22c55e' : '#e5e7eb',
+                color: newMessage.trim() ? 'white' : '#9ca3af',
+                border: 'none',
+                borderRadius: '50%',
+                cursor: newMessage.trim() ? 'pointer' : 'not-allowed',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s'
+              }}
+            >
+              <Send size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes slideUp {
+          from {
+            transform: translateY(100%);
+          }
+          to {
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        @keyframes pulse {
+          0%, 70%, 100% {
+            opacity: 0.4;
+          }
+          35% {
+            opacity: 1;
+          }
+        }
+      `}</style>
+    </div>
+  );
+};
+
 // Badge コンポーネント
 const Badge: React.FC<{
   children: React.ReactNode;
@@ -68,6 +436,8 @@ const Badge: React.FC<{
   size?: 'sm' | 'md';
   className?: string;
 }> = ({ children, variant = 'default', size = 'sm', className = '' }) => {
+  const { isMobile } = useDevice();
+  
   const variants = {
     default: 'bg-gray-100 text-gray-700',
     success: 'bg-green-100 text-green-700',
@@ -77,8 +447,8 @@ const Badge: React.FC<{
   };
 
   const sizes = {
-    sm: 'px-2 py-1 text-xs',
-    md: 'px-3 py-1.5 text-sm',
+    sm: isMobile ? 'px-2 py-1 text-xs' : 'px-2 py-1 text-xs',
+    md: isMobile ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm',
   };
 
   return (
@@ -89,8 +459,8 @@ const Badge: React.FC<{
         alignItems: 'center',
         fontWeight: '500',
         borderRadius: '9999px',
-        padding: size === 'sm' ? '0.25rem 0.5rem' : '0.375rem 0.75rem',
-        fontSize: size === 'sm' ? '0.75rem' : '0.875rem',
+        padding: size === 'sm' ? (isMobile ? '0.2rem 0.4rem' : '0.25rem 0.5rem') : (isMobile ? '0.2rem 0.4rem' : '0.375rem 0.75rem'),
+        fontSize: size === 'sm' ? (isMobile ? '0.7rem' : '0.75rem') : (isMobile ? '0.7rem' : '0.875rem'),
         backgroundColor: variant === 'default' ? '#f3f4f6' : 
                         variant === 'success' ? '#dcfce7' : 
                         variant === 'warning' ? '#fef3c7' : 
@@ -106,7 +476,7 @@ const Badge: React.FC<{
   );
 };
 
-// ServiceTag コンポーネント
+// ServiceTag コンポーネント（モバイル対応）
 const ServiceTag: React.FC<{
   service?: {
     name: string;
@@ -117,23 +487,35 @@ const ServiceTag: React.FC<{
   capacity?: number | null;
   currentUsers?: number;
 }> = ({ service, availability, capacity, currentUsers = 0 }) => {
+  const { isMobile } = useDevice();
+  
   if (!service) return null;
 
   const variant = availability === 'available' ? 'success' : 'default';
-  const symbol = availability === 'available' ? '○' : '×';
+  const symbol = availability === 'available' ? '◯' : '×';
 
   return (
     <div 
       style={{
-        padding: '0.75rem',
+        padding: isMobile ? '0.75rem' : '1rem',
         borderRadius: '0.5rem',
         border: '1px solid',
         borderColor: availability === 'available' ? '#22c55e' : '#d1d5db',
         backgroundColor: availability === 'available' ? '#f0fdf4' : '#f9fafb'
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-        <span style={{ fontWeight: '600', color: availability === 'available' ? '#166534' : '#6b7280' }}>
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '0.5rem', 
+        marginBottom: '0.25rem',
+        flexWrap: isMobile ? 'wrap' : 'nowrap'
+      }}>
+        <span style={{ 
+          fontWeight: '600', 
+          color: availability === 'available' ? '#166534' : '#6b7280',
+          fontSize: isMobile ? '0.875rem' : '1rem'
+        }}>
           {symbol} {service.name}
         </span>
         <Badge variant={variant} size="sm">
@@ -142,7 +524,7 @@ const ServiceTag: React.FC<{
       </div>
       
       <p style={{ 
-        fontSize: '0.75rem', 
+        fontSize: isMobile ? '0.7rem' : '0.75rem', 
         color: '#6b7280', 
         margin: '0 0 0.5rem 0',
         lineHeight: 1.4 
@@ -152,7 +534,7 @@ const ServiceTag: React.FC<{
       
       {availability === 'available' && capacity && (
         <div style={{ 
-          fontSize: '0.75rem', 
+          fontSize: isMobile ? '0.7rem' : '0.75rem', 
           color: '#059669',
           fontWeight: '500'
         }}>
@@ -168,41 +550,46 @@ const ServiceTag: React.FC<{
   );
 };
 
-// InfoCard コンポーネント
+// InfoCard コンポーネント（モバイル対応）
 const InfoCard: React.FC<{
   title: string;
   children: React.ReactNode;
   icon?: React.ReactNode;
-}> = ({ title, children, icon }) => (
-  <div style={{
-    backgroundColor: 'white',
-    borderRadius: '0.75rem',
-    border: '1px solid #e5e7eb',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    padding: '1.5rem',
-    marginBottom: '1.5rem'
-  }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-      {icon && <div style={{ color: '#22c55e' }}>{icon}</div>}
-      <h3 style={{ 
-        fontSize: '1.125rem', 
-        fontWeight: '600', 
-        color: '#111827',
-        margin: 0
-      }}>
-        {title}
-      </h3>
+}> = ({ title, children, icon }) => {
+  const { isMobile } = useDevice();
+  
+  return (
+    <div style={{
+      backgroundColor: 'white',
+      borderRadius: '0.75rem',
+      border: '1px solid #e5e7eb',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+      padding: isMobile ? '1rem' : '1.5rem',
+      marginBottom: isMobile ? '1rem' : '1.5rem'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+        {icon && <div style={{ color: '#22c55e' }}>{icon}</div>}
+        <h3 style={{ 
+          fontSize: isMobile ? '1rem' : '1.125rem', 
+          fontWeight: '600', 
+          color: '#111827',
+          margin: 0
+        }}>
+          {title}
+        </h3>
+      </div>
+      {children}
     </div>
-    {children}
-  </div>
-);
+  );
+};
 
-// 事業所詳細ページコンポーネント（検索状態復元機能付き）
+// 事業所詳細ページコンポーネント（レスポンシブ対応）
 const FacilityDetailPage: React.FC = () => {
   const router = useRouter();
   const { id, ...searchParams } = router.query;
-  const { user } = useAuthContext();
+  const { user, signOut } = useAuthContext();
   const { isBookmarked, toggleBookmark } = useBookmarks();
+  const { isMobile, isDesktop } = useDevice();
   
   const [facility, setFacility] = useState<Facility | null>(null);
   const [loading, setLoading] = useState(true);
@@ -213,7 +600,6 @@ const FacilityDetailPage: React.FC = () => {
 
   // 検索に戻るためのURL構築
   const getBackToSearchUrl = () => {
-    // URLパラメータから検索条件を取得
     const params = new URLSearchParams();
     
     const getString = (value: string | string[] | undefined): string => {
@@ -222,7 +608,6 @@ const FacilityDetailPage: React.FC = () => {
       return '';
     };
     
-    // 検索条件をURLパラメータから復元
     if (searchParams.q) {
       const value = getString(searchParams.q);
       if (value) params.append('q', value);
@@ -249,16 +634,12 @@ const FacilityDetailPage: React.FC = () => {
     }
 
     const queryString = params.toString();
-    const backUrl = queryString ? `/?${queryString}` : '/';
-    
-    return backUrl;
+    return queryString ? `/?${queryString}` : '/';
   };
 
   // データ取得
   useEffect(() => {
-    if (!id || Array.isArray(id)) {
-      return;
-    }
+    if (!id || Array.isArray(id)) return;
 
     const fetchFacility = async () => {
       setLoading(true);
@@ -300,6 +681,16 @@ const FacilityDetailPage: React.FC = () => {
     }
   };
 
+  // DM機能の処理
+  const handleDMClick = () => {
+    if (!isLoggedIn) {
+      alert('DM機能を使用するにはログインが必要です。');
+      return;
+    }
+    // 実際の実装時はここでDMページへの遷移やモーダル表示を行う
+    alert('DM機能は開発中です。現在はお電話またはメールでお問い合わせください。');
+  };
+
   // ローディング状態
   if (loading) {
     return (
@@ -308,19 +699,23 @@ const FacilityDetailPage: React.FC = () => {
           <title>事業所詳細 - ケアコネクト</title>
         </Head>
         
-        <header className="header">
-          <div className="container">
-            <Link href="/" className="logo-container">
-              <div className="logo">C</div>
-              <h1 className="main-title">ケアコネクト</h1>
-            </Link>
-          </div>
-        </header>
+        <Header 
+          isLoggedIn={isLoggedIn}
+          signOut={signOut}
+        />
 
-        <main className="container" style={{ paddingTop: '2rem' }}>
-          <div className="loading-container">
-            <div className="loading-spinner">⏳</div>
-            <p>事業所情報を読み込み中...</p>
+        <main style={{ 
+          paddingTop: '2rem',
+          paddingLeft: isMobile ? '1rem' : '2rem',
+          paddingRight: isMobile ? '1rem' : '2rem',
+          paddingBottom: '2rem'
+        }}>
+          <div style={{ 
+            textAlign: 'center',
+            padding: isMobile ? '2rem 1rem' : '4rem 2rem'
+          }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⏳</div>
+            <p style={{ fontSize: isMobile ? '1rem' : '1.125rem' }}>事業所情報を読み込み中...</p>
           </div>
         </main>
       </div>
@@ -335,22 +730,45 @@ const FacilityDetailPage: React.FC = () => {
           <title>事業所が見つかりません - ケアコネクト</title>
         </Head>
         
-        <header className="header">
-          <div className="container">
-            <Link href="/" className="logo-container">
-              <div className="logo">C</div>
-              <h1 className="main-title">ケアコネクト</h1>
-            </Link>
-          </div>
-        </header>
+        <Header 
+          isLoggedIn={isLoggedIn}
+          signOut={signOut}
+        />
 
-        <main className="container" style={{ paddingTop: '2rem' }}>
-          <div className="error-container">
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>❌</div>
-            <h2>事業所が見つかりません</h2>
-            <p className="error-message">{error || '指定された事業所は存在しないか、削除された可能性があります。'}</p>
+        <main style={{ 
+          paddingTop: '2rem',
+          paddingLeft: isMobile ? '1rem' : '2rem',
+          paddingRight: isMobile ? '1rem' : '2rem',
+          paddingBottom: '2rem'
+        }}>
+          <div style={{ 
+            textAlign: 'center',
+            padding: isMobile ? '2rem 1rem' : '4rem 2rem'
+          }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⌒</div>
+            <h2 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem' }}>事業所が見つかりません</h2>
+            <p style={{ 
+              color: '#6b7280',
+              marginBottom: '2rem',
+              fontSize: isMobile ? '0.875rem' : '1rem'
+            }}>
+              {error || '指定された事業所は存在しないか、削除された可能性があります。'}
+            </p>
             <Link href={getBackToSearchUrl()}>
-              <button className="cta-primary" style={{ marginTop: '1rem' }}>
+              <button style={{
+                backgroundColor: '#22c55e',
+                color: 'white',
+                padding: isMobile ? '0.75rem 1.5rem' : '1rem 2rem',
+                border: 'none',
+                borderRadius: '0.5rem',
+                fontSize: isMobile ? '0.875rem' : '1rem',
+                fontWeight: '500',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <ArrowLeft size={16} />
                 検索ページに戻る
               </button>
             </Link>
@@ -362,8 +780,6 @@ const FacilityDetailPage: React.FC = () => {
 
   const availableServices = facility.services?.filter(s => s.availability === 'available') || [];
   const unavailableServices = facility.services?.filter(s => s.availability === 'unavailable') || [];
-
-  // 検索状態がある場合の判定
   const hasSearchParams = Object.keys(searchParams).length > 0;
 
   return (
@@ -374,57 +790,63 @@ const FacilityDetailPage: React.FC = () => {
       </Head>
 
       {/* ヘッダー */}
-      <header className="header">
-        <div className="container">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-            <Link href="/" className="logo-container">
-              <div className="logo">C</div>
-              <h1 className="main-title">ケアコネクト</h1>
-            </Link>
-            
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <Link href={getBackToSearchUrl()}>
-                <button className="cta-secondary" style={{ 
-                  fontSize: '0.875rem', 
-                  padding: '0.5rem 1rem',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}>
-                  <ArrowLeft size={16} />
-                  {hasSearchParams ? '検索結果に戻る' : '検索に戻る'}
-                </button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header 
+        isLoggedIn={isLoggedIn}
+        signOut={signOut}
+        variant="home"
+        showContactButton={true}
+      />
 
       {/* メインコンテンツ */}
-      <main className="container" style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
-        {/* パンくずリスト */}
-        <nav style={{ marginBottom: '1.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
+      <main style={{ 
+        paddingTop: isMobile ? '1rem' : '2rem',
+        paddingLeft: isMobile ? '1rem' : '2rem',
+        paddingRight: isMobile ? '1rem' : '2rem',
+        paddingBottom: '4rem',
+        maxWidth: '1200px',
+        margin: '0 auto'
+      }}>
+        {/* パンくずリスト（PC・モバイル共通） */}
+        <nav style={{ 
+          marginBottom: isMobile ? '1rem' : '1.5rem', 
+          fontSize: isMobile ? '0.8rem' : '0.875rem', 
+          color: '#6b7280',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          padding: isMobile ? '0.75rem' : '0',
+          backgroundColor: isMobile ? 'white' : 'transparent',
+          borderRadius: isMobile ? '0.5rem' : '0',
+          border: isMobile ? '1px solid #e5e7eb' : 'none',
+          boxShadow: isMobile ? '0 1px 3px rgba(0,0,0,0.05)' : 'none'
+        }}>
           <Link href={getBackToSearchUrl()} style={{ color: '#22c55e', textDecoration: 'none' }}>
             {hasSearchParams ? '検索結果' : 'ホーム'}
           </Link>
-          <span style={{ margin: '0 0.5rem' }}>/</span>
+          <span>/</span>
           <span>事業所詳細</span>
-          <span style={{ margin: '0 0.5rem' }}>/</span>
-          <span style={{ color: '#111827', fontWeight: '500' }}>{facility.name}</span>
+          <span>/</span>
+          <span style={{ 
+            color: '#111827', 
+            fontWeight: '500',
+            wordBreak: isMobile ? 'break-all' : 'normal'
+          }}>
+            {facility.name}
+          </span>
         </nav>
 
         {/* 事業所ヘッダー */}
         <div style={{
           backgroundColor: 'white',
-          borderRadius: '1rem',
+          borderRadius: isMobile ? '0.75rem' : '1rem',
           border: '1px solid #e5e7eb',
           boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
           overflow: 'hidden',
-          marginBottom: '2rem'
+          marginBottom: isMobile ? '1.5rem' : '2rem'
         }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {/* 画像セクション */}
-            <div style={{ height: '300px', position: 'relative' }}>
+            <div style={{ height: isMobile ? '200px' : '300px', position: 'relative' }}>
               {facility.image_url && !imageError ? (
                 <Image
                   src={facility.image_url}
@@ -443,8 +865,14 @@ const FacilityDetailPage: React.FC = () => {
                   justifyContent: 'center',
                   flexDirection: 'column'
                 }}>
-                  <Heart size={64} style={{ color: '#22c55e', marginBottom: '1rem' }} />
-                  <p style={{ color: '#166534', fontSize: '1.125rem', fontWeight: '500' }}>
+                  <Heart size={isMobile ? 48 : 64} style={{ color: '#22c55e', marginBottom: '1rem' }} />
+                  <p style={{ 
+                    color: '#166534', 
+                    fontSize: isMobile ? '1rem' : '1.125rem', 
+                    fontWeight: '500',
+                    textAlign: 'center',
+                    padding: '0 1rem'
+                  }}>
                     {facility.name}
                   </p>
                 </div>
@@ -457,13 +885,19 @@ const FacilityDetailPage: React.FC = () => {
                 left: 0,
                 right: 0,
                 background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
-                padding: '2rem',
+                padding: isMobile ? '1.5rem' : '2rem',
                 color: 'white'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                  <div>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'flex-end',
+                  flexDirection: isMobile ? 'column' : 'row',
+                  gap: isMobile ? '1rem' : '0'
+                }}>
+                  <div style={{ width: isMobile ? '100%' : 'auto' }}>
                     <h1 style={{ 
-                      fontSize: '2rem', 
+                      fontSize: isMobile ? '1.5rem' : '2rem', 
                       fontWeight: 'bold', 
                       margin: '0 0 0.5rem 0',
                       textShadow: '0 2px 4px rgba(0,0,0,0.5)'
@@ -471,34 +905,30 @@ const FacilityDetailPage: React.FC = () => {
                       {facility.name}
                     </h1>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <MapPin size={16} />
-                      <span style={{ fontSize: '1rem' }}>{facility.district}</span>
+                      <MapPin size={isMobile ? 14 : 16} />
+                      <span style={{ fontSize: isMobile ? '0.875rem' : '1rem' }}>{facility.district}</span>
                     </div>
                   </div>
-                  
-                  {isLoggedIn && (
-                    <div style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                      borderRadius: '50%',
-                      padding: '0.5rem'
-                    }}>
-                      <BookmarkIcon
-                        isBookmarked={isBookmarked(facility.id.toString())}
-                        onClick={handleBookmarkToggle}
-                        size="lg"
-                      />
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
 
             {/* 基本情報セクション */}
-            <div style={{ padding: '2rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
+            <div style={{ padding: isMobile ? '1.5rem' : '2rem' }}>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(250px, 1fr))', 
+                gap: isMobile ? '1rem' : '1.5rem' 
+              }}>
                 {/* ステータス */}
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.5rem', 
+                    marginBottom: '0.75rem',
+                    flexWrap: 'wrap'
+                  }}>
                     <Badge variant={facility.is_active ? 'success' : 'error'}>
                       {facility.is_active ? '営業中' : '休業中'}
                     </Badge>
@@ -506,43 +936,104 @@ const FacilityDetailPage: React.FC = () => {
                       <Badge variant="info">{facility.organization_type}</Badge>
                     )}
                   </div>
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
+                  <p style={{ 
+                    fontSize: isMobile ? '0.8rem' : '0.875rem', 
+                    color: '#6b7280', 
+                    margin: 0 
+                  }}>
                     最終更新: {new Date(facility.updated_at).toLocaleDateString('ja-JP')}
                   </p>
                 </div>
 
                 {/* 連絡先 */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {facility.phone_number && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Phone size={16} style={{ color: '#22c55e' }} />
-                      <a href={`tel:${facility.phone_number}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
-                        {formatPhoneNumber(facility.phone_number)}
-                      </a>
-                    </div>
-                  )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {facility.website_url && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Globe size={16} style={{ color: '#22c55e' }} />
+                      <Globe size={isMobile ? 14 : 16} style={{ color: '#22c55e' }} />
                       <a 
                         href={facility.website_url} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        style={{ color: '#2563eb', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                        style={{ 
+                          color: '#2563eb', 
+                          textDecoration: 'none', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '0.25rem',
+                          fontSize: isMobile ? '0.875rem' : '1rem'
+                        }}
                       >
                         公式サイト
-                        <ExternalLink size={12} />
+                        <ExternalLink size={isMobile ? 10 : 12} />
                       </a>
                     </div>
                   )}
                 </div>
               </div>
+
+              {/* アクションボタン（モバイル用） */}
+              {isMobile && (
+                <div style={{
+                  marginTop: '0.25rem',
+                  display: 'grid',
+                  gridTemplateColumns: facility.phone_number ? '1fr 1fr' : '1fr',
+                  gap: '1rem'
+                }}>
+                  <button
+                    onClick={handleDMClick}
+                    style={{
+                      padding: '0.875rem',
+                      backgroundColor: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '0.5rem',
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem'
+                    }}
+                  >
+                    <MessageCircle size={16} />
+                    メッセージ
+                  </button>
+
+                  {facility.phone_number && (
+                    <a
+                      href={`tel:${facility.phone_number}`}
+                      style={{
+                        padding: '0.875rem',
+                        backgroundColor: '#22c55e',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        textDecoration: 'none',
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      <Phone size={16} />
+                      電話
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         {/* 詳細情報 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', 
+          gap: isMobile ? '0' : '2rem' 
+        }}>
           {/* メインコンテンツ */}
           <div>
             {/* 事業所概要 */}
@@ -552,7 +1043,7 @@ const FacilityDetailPage: React.FC = () => {
                   lineHeight: 1.7, 
                   color: '#374151',
                   margin: 0,
-                  fontSize: '1rem'
+                  fontSize: isMobile ? '0.875rem' : '1rem'
                 }}>
                   {facility.description}
                 </p>
@@ -567,7 +1058,7 @@ const FacilityDetailPage: React.FC = () => {
                   color: '#22c55e',
                   fontWeight: '500',
                   margin: 0,
-                  fontSize: '1rem'
+                  fontSize: isMobile ? '0.875rem' : '1rem'
                 }}>
                   {facility.appeal_points}
                 </p>
@@ -577,16 +1068,16 @@ const FacilityDetailPage: React.FC = () => {
             {/* 提供サービス */}
             <InfoCard title="提供サービス" icon={<Heart size={20} />}>
               {availableServices.length > 0 && (
-                <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ marginBottom: availableServices.length > 0 && unavailableServices.length > 0 ? '1.5rem' : '0' }}>
                   <h4 style={{ 
                     color: '#166534', 
-                    fontSize: '1rem', 
+                    fontSize: isMobile ? '0.875rem' : '1rem', 
                     fontWeight: '600',
                     marginBottom: '1rem'
                   }}>
                     ✅ 利用可能なサービス ({availableServices.length}件)
                   </h4>
-                  <div style={{ display: 'grid', gap: '1rem' }}>
+                  <div style={{ display: 'grid', gap: isMobile ? '0.75rem' : '1rem' }}>
                     {availableServices.map((service) => (
                       <ServiceTag
                         key={service.id}
@@ -604,13 +1095,13 @@ const FacilityDetailPage: React.FC = () => {
                 <div>
                   <h4 style={{ 
                     color: '#6b7280', 
-                    fontSize: '1rem', 
+                    fontSize: isMobile ? '0.875rem' : '1rem', 
                     fontWeight: '600',
                     marginBottom: '1rem'
                   }}>
-                    ❌ 現在利用できないサービス ({unavailableServices.length}件)
+                    ⌒ 現在利用できないサービス ({unavailableServices.length}件)
                   </h4>
-                  <div style={{ display: 'grid', gap: '1rem' }}>
+                  <div style={{ display: 'grid', gap: isMobile ? '0.75rem' : '1rem' }}>
                     {unavailableServices.map((service) => (
                       <ServiceTag
                         key={service.id}
@@ -623,175 +1114,316 @@ const FacilityDetailPage: React.FC = () => {
               )}
 
               {availableServices.length === 0 && unavailableServices.length === 0 && (
-                <p style={{ color: '#6b7280', textAlign: 'center', padding: '2rem' }}>
+                <p style={{ 
+                  color: '#6b7280', 
+                  textAlign: 'center', 
+                  padding: isMobile ? '1.5rem' : '2rem',
+                  fontSize: isMobile ? '0.875rem' : '1rem'
+                }}>
                   サービス情報がありません
                 </p>
               )}
             </InfoCard>
+
+            {/* モバイル版サイドバー情報 */}
+            {isMobile && (
+              <>
+                {/* アクセス情報 */}
+                <InfoCard title="アクセス情報" icon={<MapPin size={20} />}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+                        住所
+                      </h4>
+                      <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                        {facility.address}
+                      </p>
+                    </div>
+                    
+                    {facility.transportation_info && (
+                      <div>
+                        <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+                          交通アクセス
+                        </h4>
+                        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                          {facility.transportation_info}
+                        </p>
+                      </div>
+                    )}
+
+                    {facility.latitude && facility.longitude && (
+                      <button
+                        onClick={() => {
+                          const url = `https://www.google.com/maps?q=${facility.latitude},${facility.longitude}`;
+                          window.open(url, '_blank');
+                        }}
+                        style={{
+                          padding: '0.875rem',
+                          backgroundColor: '#22c55e',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '0.5rem',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                          fontWeight: '500',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.5rem',
+                          width: '100%'
+                        }}
+                      >
+                        <MapPin size={16} />
+                        Google Mapで開く
+                      </button>
+                    )}
+                  </div>
+                </InfoCard>
+
+                {/* 運営情報 */}
+                <InfoCard title="運営情報" icon={<Clock size={20} />}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {facility.operating_hours && (
+                      <div>
+                        <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+                          営業時間
+                        </h4>
+                        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+                          {facility.operating_hours}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {facility.established_date && (
+                      <div>
+                        <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+                          設立年月日
+                        </h4>
+                        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+                          {new Date(facility.established_date).toLocaleDateString('ja-JP')}
+                        </p>
+                      </div>
+                    )}
+
+                    {facility.staff_count && (
+                      <div>
+                        <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+                          スタッフ数
+                        </h4>
+                        <p style={{ 
+                          margin: 0, 
+                          color: '#6b7280', 
+                          fontSize: '0.875rem', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '0.25rem' 
+                        }}>
+                          <Users size={14} />
+                          {facility.staff_count}名
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </InfoCard>
+
+              </>
+            )}
           </div>
 
-          {/* サイドバー */}
-          <div>
-            {/* アクセス情報 */}
-            <InfoCard title="アクセス情報" icon={<MapPin size={20} />}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div>
-                  <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
-                    住所
-                  </h4>
-                  <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
-                    {facility.address}
-                  </p>
-                </div>
-                
-                {facility.transportation_info && (
-                  <div>
-                    <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
-                      交通アクセス
-                    </h4>
-                    <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
-                      {facility.transportation_info}
-                    </p>
-                  </div>
-                )}
-
-                {facility.latitude && facility.longitude && (
+          {/* デスクトップ版サイドバー */}
+          {isDesktop && (
+            <div>
+              {/* アクション */}
+              <InfoCard title="お問い合わせ" icon={<MessageCircle size={20} />}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {/* DMボタン */}
                   <button
-                    onClick={() => {
-                      const url = `https://www.google.com/maps?q=${facility.latitude},${facility.longitude}`;
-                      window.open(url, '_blank');
-                    }}
+                    onClick={handleDMClick}
                     style={{
-                      padding: '0.75rem',
-                      backgroundColor: '#22c55e',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '0.5rem',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem'
-                    }}
-                  >
-                    <MapPin size={16} />
-                    Google Mapで開く
-                  </button>
-                )}
-              </div>
-            </InfoCard>
-
-            {/* 運営情報 */}
-            <InfoCard title="運営情報" icon={<Clock size={20} />}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {facility.operating_hours && (
-                  <div>
-                    <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
-                      営業時間
-                    </h4>
-                    <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
-                      {facility.operating_hours}
-                    </p>
-                  </div>
-                )}
-                
-                {facility.established_date && (
-                  <div>
-                    <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
-                      設立年月日
-                    </h4>
-                    <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
-                      {new Date(facility.established_date).toLocaleDateString('ja-JP')}
-                    </p>
-                  </div>
-                )}
-
-                {facility.staff_count && (
-                  <div>
-                    <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
-                      スタッフ数
-                    </h4>
-                    <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      <Users size={14} />
-                      {facility.staff_count}名
-                    </p>
-                  </div>
-                )}
-              </div>
-            </InfoCard>
-
-            {/* お問い合わせ */}
-            <InfoCard title="お問い合わせ" icon={<MessageCircle size={20} />}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {facility.contact_person && (
-                  <div>
-                    <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
-                      担当者
-                    </h4>
-                    <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
-                      {facility.contact_person}
-                    </p>
-                  </div>
-                )}
-
-                {facility.email && (
-                  <div>
-                    <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
-                      メールアドレス
-                    </h4>
-                    <a 
-                      href={`mailto:${facility.email}`}
-                      style={{ color: '#2563eb', textDecoration: 'none', fontSize: '0.875rem' }}
-                    >
-                      {facility.email}
-                    </a>
-                  </div>
-                )}
-
-                {facility.phone_number && (
-                  <a
-                    href={`tel:${facility.phone_number}`}
-                    style={{
-                      padding: '0.75rem',
+                      padding: '0.875rem',
                       backgroundColor: '#3b82f6',
                       color: 'white',
                       border: 'none',
                       borderRadius: '0.5rem',
-                      textDecoration: 'none',
                       fontSize: '0.875rem',
                       fontWeight: '500',
+                      cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '0.5rem'
+                      gap: '0.5rem',
+                      width: '100%',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#2563eb';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#3b82f6';
                     }}
                   >
-                    <Phone size={16} />
-                    電話で問い合わせ
-                  </a>
-                )}
-              </div>
-            </InfoCard>
-          </div>
+                    <MessageCircle size={16} />
+                    メッセージを送る
+                  </button>
+
+                  {facility.contact_person && (
+                    <div>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+                        担当者
+                      </h4>
+                      <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+                        {facility.contact_person}
+                      </p>
+                    </div>
+                  )}
+
+                  {facility.email && (
+                    <div>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+                        メールアドレス
+                      </h4>
+                      <a 
+                        href={`mailto:${facility.email}`}
+                        style={{ color: '#2563eb', textDecoration: 'none', fontSize: '0.875rem' }}
+                      >
+                        {facility.email}
+                      </a>
+                    </div>
+                  )}
+
+                  {facility.phone_number && (
+                    <a
+                      href={`tel:${facility.phone_number}`}
+                      style={{
+                        padding: '0.875rem',
+                        backgroundColor: '#22c55e',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        textDecoration: 'none',
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      <Phone size={16} />
+                      電話で問い合わせ
+                    </a>
+                  )}
+                </div>
+              </InfoCard>
+
+              {/* アクセス情報 */}
+              <InfoCard title="アクセス情報" icon={<MapPin size={20} />}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+                      住所
+                    </h4>
+                    <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+                      {facility.address}
+                    </p>
+                  </div>
+                  
+                  {facility.transportation_info && (
+                    <div>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+                        交通アクセス
+                      </h4>
+                      <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+                        {facility.transportation_info}
+                      </p>
+                    </div>
+                  )}
+
+                  {facility.latitude && facility.longitude && (
+                    <button
+                      onClick={() => {
+                        const url = `https://www.google.com/maps?q=${facility.latitude},${facility.longitude}`;
+                        window.open(url, '_blank');
+                      }}
+                      style={{
+                        padding: '0.75rem',
+                        backgroundColor: '#22c55e',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        cursor: 'pointer',
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      <MapPin size={16} />
+                      Google Mapで開く
+                    </button>
+                  )}
+                </div>
+              </InfoCard>
+
+              {/* 運営情報 */}
+              <InfoCard title="運営情報" icon={<Clock size={20} />}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {facility.operating_hours && (
+                    <div>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+                        営業時間
+                      </h4>
+                      <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+                        {facility.operating_hours}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {facility.established_date && (
+                    <div>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+                        設立年月日
+                      </h4>
+                      <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+                        {new Date(facility.established_date).toLocaleDateString('ja-JP')}
+                      </p>
+                    </div>
+                  )}
+
+                  {facility.staff_count && (
+                    <div>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+                        スタッフ数
+                      </h4>
+                      <p style={{ 
+                        margin: 0, 
+                        color: '#6b7280', 
+                        fontSize: '0.875rem', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.25rem' 
+                      }}>
+                        <Users size={14} />
+                        {facility.staff_count}名
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </InfoCard>
+            </div>
+          )}
         </div>
       </main>
 
+
+
       {/* フッター */}
-      <footer className="footer">
-        <div className="container">
-          <div className="footer-content">
-            <Link href="/" className="footer-logo">
-              <div className="footer-logo-icon">C</div>
-              <span className="footer-name">ケアコネクト</span>
-            </Link>
-            <div className="footer-copyright">
-              © 2025 ケアコネクト. All rights reserved.
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer 
+        isLoggedIn={isLoggedIn}
+        signOut={signOut}
+      />
     </div>
   );
 };
