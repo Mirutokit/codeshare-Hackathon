@@ -1,8 +1,9 @@
-// components/search/MapViewInner.tsx - 実際の地図コンポーネント
+// components/search/MapViewInner.tsx - スマホ対応地図コンポーネント
 import React, { useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { LatLngBounds } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
 
 // Leafletのデフォルトマーカーアイコンの問題を修正
 import L from 'leaflet';
@@ -70,7 +71,12 @@ const createFacilityIcon = () => {
   });
 };
 
-// 地図の境界を自動調整するコンポーネント
+// スマホかどうかを判定
+const isMobile = () => {
+  return window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
+// 地図の境界を自動調整するコンポーネント（スマホ対応）
 const MapBounds: React.FC<{ facilities: Facility[] }> = ({ facilities }) => {
   const map = useMap();
 
@@ -80,39 +86,53 @@ const MapBounds: React.FC<{ facilities: Facility[] }> = ({ facilities }) => {
         const bounds = new LatLngBounds(
           facilities.map(f => [f.latitude!, f.longitude!])
         );
-        
-        // 施設が1つの場合は特定のズームレベルを設定
+
+        const mobile = isMobile();
+        // 左右にも余白を取る
+        const padding: [number, number] = mobile ? [40, 40] : [20, 20];
+
         if (facilities.length === 1) {
-          map.setView([facilities[0].latitude!, facilities[0].longitude!], 15);
+          map.setView([facilities[0].latitude!, facilities[0].longitude!], mobile ? 14 : 15);
         } else {
           map.fitBounds(bounds, { 
-            padding: [20, 20],
-            maxZoom: 16
+            padding: padding,
+            maxZoom: mobile ? 15 : 16
           });
+        }
+
+        if (mobile) {
+          // サイズ崩れ防止のため invalidateSize を少し遅延
+          setTimeout(() => {
+            map.invalidateSize();
+          }, 300);
         }
       } catch (error) {
         console.error('地図の境界設定でエラー:', error);
-        // デフォルトは東京都庁の位置
-        map.setView([35.6762, 139.6503], 11);
+        map.setView([35.6762, 139.6503], isMobile() ? 10 : 11);
       }
     } else {
-      // デフォルトは東京都庁の位置
-      map.setView([35.6762, 139.6503], 11);
+      map.setView([35.6762, 139.6503], isMobile() ? 10 : 11);
     }
   }, [facilities, map]);
 
   return null;
 };
 
-// 事業所ポップアップの内容
+
+// 事業所ポップアップの内容（スマホ対応）
 const FacilityPopup: React.FC<{ facility: Facility }> = ({ facility }) => {
   const availableServices = facility.services?.filter(s => s.availability === 'available') || [];
   const unavailableServices = facility.services?.filter(s => s.availability === 'unavailable') || [];
+  const mobile = isMobile();
 
   return (
-    <div style={{ maxWidth: '280px', fontSize: '0.875rem' }}>
+    <div style={{ 
+      maxWidth: mobile ? '250px' : '280px', 
+      fontSize: mobile ? '0.8rem' : '0.875rem',
+      padding: mobile ? '0.25rem' : '0'
+    }}>
       <h3 style={{ 
-        fontSize: '1rem', 
+        fontSize: mobile ? '0.9rem' : '1rem', 
         fontWeight: 'bold', 
         color: '#111827',
         marginBottom: '0.5rem',
@@ -123,7 +143,7 @@ const FacilityPopup: React.FC<{ facility: Facility }> = ({ facility }) => {
       
       <p style={{ 
         color: '#6b7280', 
-        fontSize: '0.75rem',
+        fontSize: mobile ? '0.7rem' : '0.75rem',
         marginBottom: '0.75rem'
       }}>
         📍 {facility.district}
@@ -132,12 +152,12 @@ const FacilityPopup: React.FC<{ facility: Facility }> = ({ facility }) => {
       {facility.description && (
         <p style={{ 
           color: '#374151',
-          fontSize: '0.75rem',
+          fontSize: mobile ? '0.7rem' : '0.75rem',
           lineHeight: 1.4,
           marginBottom: '0.75rem'
         }}>
-          {facility.description.length > 80 
-            ? facility.description.slice(0, 80) + '...' 
+          {facility.description.length > (mobile ? 60 : 80)
+            ? facility.description.slice(0, mobile ? 60 : 80) + '...' 
             : facility.description}
         </p>
       )}
@@ -145,7 +165,7 @@ const FacilityPopup: React.FC<{ facility: Facility }> = ({ facility }) => {
       {facility.appeal_points && (
         <div style={{ marginBottom: '0.75rem' }}>
           <div style={{ 
-            fontSize: '0.75rem', 
+            fontSize: mobile ? '0.7rem' : '0.75rem', 
             fontWeight: '500', 
             color: '#374151',
             marginBottom: '0.25rem'
@@ -153,13 +173,13 @@ const FacilityPopup: React.FC<{ facility: Facility }> = ({ facility }) => {
             ✨ アピールポイント
           </div>
           <p style={{ 
-            fontSize: '0.75rem', 
+            fontSize: mobile ? '0.7rem' : '0.75rem', 
             color: '#22c55e', 
             fontWeight: '500',
             lineHeight: 1.3
           }}>
-            {facility.appeal_points.length > 60 
-              ? facility.appeal_points.slice(0, 60) + '...' 
+            {facility.appeal_points.length > (mobile ? 40 : 60)
+              ? facility.appeal_points.slice(0, mobile ? 40 : 60) + '...' 
               : facility.appeal_points}
           </p>
         </div>
@@ -167,7 +187,7 @@ const FacilityPopup: React.FC<{ facility: Facility }> = ({ facility }) => {
 
       <div style={{ marginBottom: '0.75rem' }}>
         <div style={{ 
-          fontSize: '0.75rem', 
+          fontSize: mobile ? '0.7rem' : '0.75rem', 
           fontWeight: '500', 
           color: '#374151',
           marginBottom: '0.5rem'
@@ -177,15 +197,15 @@ const FacilityPopup: React.FC<{ facility: Facility }> = ({ facility }) => {
         <div style={{ 
           display: 'flex', 
           flexWrap: 'wrap', 
-          gap: '0.25rem'
+          gap: mobile ? '0.125rem' : '0.25rem'
         }}>
-          {availableServices.slice(0, 3).map((service, index) => (
+          {availableServices.slice(0, mobile ? 2 : 3).map((service, index) => (
             <span
               key={index}
               style={{
-                padding: '0.125rem 0.375rem',
+                padding: mobile ? '0.1rem 0.25rem' : '0.125rem 0.375rem',
                 borderRadius: '0.25rem',
-                fontSize: '0.625rem',
+                fontSize: mobile ? '0.55rem' : '0.625rem',
                 fontWeight: '500',
                 background: '#dcfce7',
                 color: '#166534'
@@ -194,13 +214,13 @@ const FacilityPopup: React.FC<{ facility: Facility }> = ({ facility }) => {
               ○ {service.service?.name || 'サービス'}
             </span>
           ))}
-          {unavailableServices.slice(0, 2).map((service, index) => (
+          {unavailableServices.slice(0, mobile ? 1 : 2).map((service, index) => (
             <span
               key={`unavailable-${index}`}
               style={{
-                padding: '0.125rem 0.375rem',
+                padding: mobile ? '0.1rem 0.25rem' : '0.125rem 0.375rem',
                 borderRadius: '0.25rem',
-                fontSize: '0.625rem',
+                fontSize: mobile ? '0.55rem' : '0.625rem',
                 fontWeight: '500',
                 background: '#f3f4f6',
                 color: '#6b7280'
@@ -209,15 +229,15 @@ const FacilityPopup: React.FC<{ facility: Facility }> = ({ facility }) => {
               × {service.service?.name || 'サービス'}
             </span>
           ))}
-          {(availableServices.length + unavailableServices.length) > 5 && (
+          {(availableServices.length + unavailableServices.length) > (mobile ? 3 : 5) && (
             <span style={{
-              padding: '0.125rem 0.375rem',
+              padding: mobile ? '0.1rem 0.25rem' : '0.125rem 0.375rem',
               borderRadius: '0.25rem',
-              fontSize: '0.625rem',
+              fontSize: mobile ? '0.55rem' : '0.625rem',
               background: '#e5e7eb',
               color: '#6b7280'
             }}>
-              他{(availableServices.length + unavailableServices.length) - 5}件
+              他{(availableServices.length + unavailableServices.length) - (mobile ? 3 : 5)}件
             </span>
           )}
         </div>
@@ -225,12 +245,20 @@ const FacilityPopup: React.FC<{ facility: Facility }> = ({ facility }) => {
 
       <div style={{ marginBottom: '0.75rem' }}>
         {facility.phone_number && (
-          <p style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.125rem' }}>
+          <p style={{ 
+            fontSize: mobile ? '0.7rem' : '0.75rem', 
+            color: '#6b7280', 
+            marginBottom: '0.125rem',
+            wordBreak: 'break-all'
+          }}>
             📞 {facility.phone_number}
           </p>
         )}
         {facility.website_url && (
-          <p style={{ fontSize: '0.75rem', marginBottom: '0.125rem' }}>
+          <p style={{ 
+            fontSize: mobile ? '0.7rem' : '0.75rem', 
+            marginBottom: '0.125rem' 
+          }}>
             🌐 <a 
               href={facility.website_url} 
               target="_blank" 
@@ -250,13 +278,14 @@ const FacilityPopup: React.FC<{ facility: Facility }> = ({ facility }) => {
           style={{
             background: '#22c55e',
             color: 'white',
-            padding: '0.375rem 1rem',
+            padding: mobile ? '0.3rem 0.8rem' : '0.375rem 1rem',
             border: 'none',
             borderRadius: '0.375rem',
-            fontSize: '0.75rem',
+            fontSize: mobile ? '0.7rem' : '0.75rem',
             fontWeight: '500',
             cursor: 'pointer',
-            transition: 'background-color 0.2s'
+            transition: 'background-color 0.2s',
+            width: mobile ? '100%' : 'auto'
           }}
           onMouseOver={(e) => (e.target as HTMLElement).style.background = '#16a34a'}
           onMouseOut={(e) => (e.target as HTMLElement).style.background = '#22c55e'}
@@ -271,13 +300,26 @@ const FacilityPopup: React.FC<{ facility: Facility }> = ({ facility }) => {
   );
 };
 
-// 実際の地図コンポーネント
+// 実際の地図コンポーネント（スマホ対応）
 const MapViewInner: React.FC<{ 
   facilities: Facility[];
   loading?: boolean;
 }> = ({ facilities, loading = false }) => {
   const [facilityIcon, setFacilityIcon] = useState<L.Icon | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [mobile, setMobile] = useState(false);
+
+  // モバイル判定
+  useEffect(() => {
+    const checkMobile = () => {
+      setMobile(isMobile());
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // アイコンの初期化
   useEffect(() => {
@@ -296,14 +338,15 @@ const MapViewInner: React.FC<{
   console.log('MapViewInner レンダリング:', { 
     facilities: facilities.length,
     loading,
-    facilityIcon: !!facilityIcon
+    facilityIcon: !!facilityIcon,
+    mobile
   });
 
   // エラー状態の表示
   if (mapError) {
     return (
       <div style={{
-        height: '600px',
+        height: mobile ? '400px' : '600px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -311,10 +354,12 @@ const MapViewInner: React.FC<{
         backgroundColor: '#fef2f2',
         borderRadius: '0.75rem',
         border: '1px solid #fecaca',
-        color: '#dc2626'
+        color: '#dc2626',
+        margin: '0', // スマホでは左右の余白を削除
+        padding: '1rem'
       }}>
         <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>❌</div>
-        <p>{mapError}</p>
+        <p style={{ textAlign: 'center' }}>{mapError}</p>
         <button 
           onClick={() => {
             setMapError(null);
@@ -340,7 +385,7 @@ const MapViewInner: React.FC<{
   if (!facilityIcon) {
     return (
       <div style={{
-        height: '600px',
+        height: mobile ? '400px' : '600px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -348,7 +393,9 @@ const MapViewInner: React.FC<{
         backgroundColor: '#f9fafb',
         borderRadius: '0.75rem',
         border: '1px solid #e5e7eb',
-        color: '#6b7280'
+        color: '#6b7280',
+        margin: '0',
+        padding: '1rem'
       }}>
         <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
         <p>地図を準備中...</p>
@@ -358,57 +405,76 @@ const MapViewInner: React.FC<{
 
   try {
     return (
-      <MapContainer
-        center={tokyoCenter}
-        zoom={11}
-        style={{ 
-          height: '600px', 
-          width: '100%', 
-          borderRadius: '0.75rem',
-          border: '1px solid #e5e7eb'
-        }}
-        scrollWheelZoom={true}
-        zoomControl={true}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maxZoom={19}
-        />
-        
-        {/* 地図の境界を自動調整 */}
-        <MapBounds facilities={facilities} />
-        
-        {/* 施設マーカー */}
-        {facilities.map((facility) => (
-          <Marker
-            key={facility.id}
-            position={[facility.latitude!, facility.longitude!]}
-            icon={facilityIcon}
-          >
-            <Popup maxWidth={300} closeButton={true}>
-              <FacilityPopup facility={facility} />
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
+      <div style={{
+        margin: '0.25rem',
+        borderRadius: mobile ? '0' : '0.75rem',
+        overflow: 'hidden',
+        border: mobile ? 'none' : '1px solid #e5e7eb'
+      }}>
+        <MapContainer
+          center={tokyoCenter}
+          zoom={mobile ? 10 : 11}
+          style={{ 
+            height: mobile ? '400px' : '600px',
+            width: '100%'
+          }}
+          scrollWheelZoom={true}
+          zoomControl={true}
+          touchZoom={true} // タッチズーム有効
+          doubleClickZoom={true} // ダブルタップズーム有効
+          dragging={true} // ドラッグ有効
+          boxZoom={false} // ボックスズーム無効（スマホでは不要）
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            maxZoom={19}
+            tileSize={256}
+            zoomOffset={0}
+          />
+          
+          {/* 地図の境界を自動調整 */}
+          <MapBounds facilities={facilities} />
+          
+          {/* 施設マーカー */}
+          {facilities.map((facility) => (
+            <Marker
+              key={facility.id}
+              position={[facility.latitude!, facility.longitude!]}
+              icon={facilityIcon}
+            >
+              <Popup 
+                maxWidth={mobile ? 250 : 300} 
+                closeButton={true}
+                autoPan={true}
+                keepInView={true}
+                autoPanPadding={[10, 10]}
+              >
+                <FacilityPopup facility={facility} />
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
+      </div>
     );
   } catch (error) {
     console.error('地図レンダリングエラー:', error);
     return (
       <div style={{
-        height: '600px',
+        height: mobile ? '400px' : '600px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#fef2f2',
-        borderRadius: '0.75rem',
-        border: '1px solid #fecaca',
-        color: '#dc2626'
+        borderRadius: mobile ? '0' : '0.75rem',
+        border: mobile ? 'none' : '1px solid #fecaca',
+        color: '#dc2626',
+        margin : '0',
+        padding: '1rem'
       }}>
         <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>❌</div>
-        <p>地図の読み込みに失敗しました</p>
+        <p style={{ textAlign: 'center' }}>地図の読み込みに失敗しました</p>
         <button 
           onClick={() => window.location.reload()}
           style={{

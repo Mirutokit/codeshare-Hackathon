@@ -22,7 +22,7 @@ export default function Header({
   customTitle,
   hideSubtitle = false
 }: HeaderProps) {
-  const { isMobile, isTablet, isDesktop } = useDevice();
+  const { isMobile, isDesktop } = useDevice();
 
   const commonProps = {
     isLoggedIn,
@@ -36,11 +36,6 @@ export default function Header({
   if (isMobile) {
     return <MobileHeader {...commonProps} />;
   }
-
-  if (isTablet) {
-    return <TabletHeader {...commonProps} />;
-  }
-
   return <DesktopHeader {...commonProps} />;
 }
 
@@ -225,170 +220,6 @@ function MobileHeader({
             </div>
           </div>
         )}
-      </div>
-    </header>
-  );
-}
-
-// ★ タブレット版ヘッダー
-function TabletHeader({ 
-  isLoggedIn, 
-  signOut, 
-  variant, 
-  showContactButton, 
-  hideSubtitle 
-}: HeaderProps) {
-  return (
-    <header style={{
-      background: variant === 'mypage' ? '#f8fafc' : 'white',
-      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-      borderBottom: '1px solid #e5e7eb',
-      padding: '1rem 0'
-    }}>
-      <div style={{
-        maxWidth: '80rem',
-        margin: '0 auto',
-        padding: '0 1.5rem'
-      }}>
-        {/* 上段：ロゴとサブタイトル */}
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between',
-          marginBottom: '0.75rem'
-        }}>
-          <Link href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <div style={{
-                width: '2rem', height: '2rem', 
-                background: '#22c55e',
-                borderRadius: '0.5rem',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}>
-                <span style={{ color: 'white', fontWeight: 'bold', fontSize: '1.125rem' }}>C</span>
-              </div>
-              <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#111827' }}>ケアコネクト</span>
-            </div>
-          </Link>
-          
-          {!hideSubtitle && (
-            <span style={{ 
-              fontSize: '14px', 
-              color: '#6b7280'
-            }}>
-              {variant === 'mypage' 
-                ? 'アカウント設定・お気に入り管理'
-                : '東京都の障害福祉サービス事業所検索システム'
-              }
-            </span>
-          )}
-        </div>
-
-        {/* 下段：ナビゲーション */}
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          gap: '1rem',
-          flexWrap: 'wrap'
-        }}>
-          {/* ホームリンク（mypageの時のみ） */}
-          {variant === 'mypage' && (
-            <>
-              <Link href="/" style={{ 
-                padding: '0.5rem 0.75rem', 
-                fontSize: '0.875rem', 
-                fontWeight: '500', 
-                color: '#374151', 
-                background: '#f3f4f6', 
-                borderRadius: '0.375rem', 
-                textDecoration: 'none' 
-              }}>
-                ホームに戻る
-              </Link>
-              <span style={{ color: '#d1d5db' }}>|</span>
-            </>
-          )}
-
-          {isLoggedIn ? (
-            <>
-              {variant !== 'mypage' && (
-                <>
-                  <Link href="/mypage" style={{ 
-                    padding: '0.5rem 0.75rem', 
-                    fontSize: '0.875rem', 
-                    fontWeight: '500', 
-                    color: 'white', 
-                    background: '#22c55e', 
-                    borderRadius: '0.375rem', 
-                    textDecoration: 'none' 
-                  }}>
-                    マイページ
-                  </Link>
-                  <span style={{ color: '#d1d5db' }}>|</span>
-                </>
-              )}
-              <button
-                onClick={signOut}
-                style={{
-                  padding: '0.5rem 0.75rem',
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  color: '#374151',
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '0.375rem',
-                  cursor: 'pointer'
-                }}
-              >
-                ログアウト
-              </button>
-              {showContactButton && <span style={{ color: '#d1d5db' }}>|</span>}
-            </>
-          ) : (
-            <>
-              <Link href="/auth/login" style={{ 
-                padding: '0.5rem 0.75rem', 
-                fontSize: '0.875rem', 
-                fontWeight: '500', 
-                color: '#374151', 
-                background: '#f3f4f6', 
-                borderRadius: '0.375rem', 
-                textDecoration: 'none' 
-              }}>
-                ログイン
-              </Link>
-              <span style={{ color: '#d1d5db' }}>|</span>
-              <Link href="/auth/register" style={{ 
-                padding: '0.5rem 0.75rem', 
-                fontSize: '0.875rem', 
-                fontWeight: '500', 
-                color: 'white', 
-                background: '#22c55e', 
-                borderRadius: '0.375rem', 
-                textDecoration: 'none' 
-              }}>
-                新規登録
-              </Link>
-              {showContactButton && <span style={{ color: '#d1d5db' }}>|</span>}
-            </>
-          )}
-          
-          {showContactButton && (
-            <button style={{ 
-              padding: '0.5rem 0.75rem', 
-              fontSize: '0.875rem', 
-              fontWeight: '500', 
-              color: 'white', 
-              background: '#22c55e', 
-              borderRadius: '0.375rem', 
-              border: 'none', 
-              cursor: 'pointer' 
-            }}>
-              お問い合わせ
-            </button>
-          )}
-        </div>
       </div>
     </header>
   );

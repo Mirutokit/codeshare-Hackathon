@@ -685,11 +685,11 @@ const FacilityCard: React.FC<{
     return (
       <div className="facility-card" style={{ 
         backgroundColor: 'white',
-        borderRadius: '0.75rem',
+        borderRadius: '0.25rem',
         border: '1px solid #e5e7eb',
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
         padding: '1rem',
-        marginBottom: '1rem',
+        marginBottom: '0',
         position: 'relative'
       }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -809,7 +809,7 @@ const FacilityCard: React.FC<{
               fontWeight: '500',
               fontSize: '0.875rem',
               transition: 'background-color 0.2s',
-              marginTop: '0.5rem'
+              marginTop: '0'
             }}>
               詳細を見る
             </a>
