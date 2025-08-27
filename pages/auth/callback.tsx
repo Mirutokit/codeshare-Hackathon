@@ -126,7 +126,7 @@ const AuthCallback: React.FC = () => {
             // その他の認証成功
             setStatus('success')
             setMessage('ログインしました')
-            setTimeout(() => router.push('/'), 2000)
+            setTimeout(() => router.push('/mypage'), 2000)
             return
           }
         }
@@ -338,7 +338,7 @@ const AuthCallback: React.FC = () => {
         {status === 'error' && (
           <div className="space-y-3">
             <Link 
-              href="/auth/login"
+              href="/auth/userlogin"
               className="inline-block bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600 transition-colors"
             >
               ログインページに戻る

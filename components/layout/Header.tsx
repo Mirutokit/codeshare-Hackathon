@@ -181,7 +181,7 @@ function MobileHeader({
                 </>
               ) : (
                 <>
-                  <Link href="/auth/login" style={{ 
+                  <Link href="/auth/userlogin" style={{ 
                     padding: '0.75rem', 
                     background: '#f3f4f6', 
                     color: '#374151', 
@@ -189,9 +189,9 @@ function MobileHeader({
                     borderRadius: '0.375rem',
                     textAlign: 'center'
                   }}>
-                    ログイン
+                    利用者ログイン
                   </Link>
-                  <Link href="/auth/register" style={{ 
+                  <Link href="/auth/facilitylogin" style={{ 
                     padding: '0.75rem', 
                     background: '#22c55e', 
                     color: 'white', 
@@ -199,7 +199,7 @@ function MobileHeader({
                     borderRadius: '0.375rem',
                     textAlign: 'center'
                   }}>
-                    新規登録
+                    施設ログイン
                   </Link>
                 </>
               )}
@@ -329,7 +329,7 @@ function DesktopHeader({
             </>
           ) : (
             <>
-              <Link href="/auth/login" style={{ 
+              <Link href="/auth/userlogin" style={{ 
                 padding: '0.5rem 0.75rem', 
                 fontSize: '0.875rem', 
                 fontWeight: '500', 
@@ -338,10 +338,10 @@ function DesktopHeader({
                 borderRadius: '0.375rem', 
                 textDecoration: 'none' 
               }}>
-                ログイン
+                利用者ログイン
               </Link>
               <span style={{ color: '#d1d5db', fontSize: '1rem' }}>|</span>
-              <Link href="/auth/register" style={{ 
+              <Link href="/auth/facilitylogin" style={{ 
                 padding: '0.5rem 0.75rem', 
                 fontSize: '0.875rem', 
                 fontWeight: '500', 
@@ -350,7 +350,7 @@ function DesktopHeader({
                 borderRadius: '0.375rem', 
                 textDecoration: 'none' 
               }}>
-                新規登録
+                施設ログイン
               </Link>
               {showContactButton && <span style={{ color: '#d1d5db', fontSize: '1rem' }}>|</span>}
             </>

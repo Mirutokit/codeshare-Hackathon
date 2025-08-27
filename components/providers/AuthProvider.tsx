@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
+import { useRouter } from 'next/router'
 
 interface AuthContextType {
   user: User | null
@@ -30,11 +31,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
+
+  // Braveブラウザの検出
+  const isBrave = () => {
+    return (navigator as any).brave && (navigator as any).brave.isBrave
+  }
 
   useEffect(() => {
     const getSession = async () => {
       try {
         console.log('=== AuthProvider初期セッション取得 ===')
+        
+        // Braveブラウザの場合、少し遅延を加える
+        if (isBrave()) {
+          console.log('Braveブラウザを検出、遅延処理を適用')
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+        
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (error) {
@@ -61,11 +75,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('=== Auth state changed ===', {
           event,
           userId: session?.user?.id || 'no user',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          currentPath: router.pathname,
+          isBrave: isBrave()
         })
+        
         setSession(session)
         setUser(session?.user ?? null)
         setLoading(false)
+
+        // SIGNED_OUT イベントの場合のみ、ログインページ以外からのリダイレクトを防ぐ
+        if (event === 'SIGNED_OUT') {
+          console.log('サインアウト検出: 現在のパス =', router.pathname)
+          
+          // Braveの場合、より長い遅延を適用
+          const delay = isBrave() ? 300 : 100
+          
+          // メインページ以外にいる場合のみリダイレクト
+          if (router.pathname !== '/' && router.pathname !== '/auth/login') {
+            setTimeout(() => {
+              router.push('/')
+            }, delay)
+          }
+        }
       }
     )
 
@@ -73,7 +105,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('AuthProvider cleanup: subscription解除')
       subscription.unsubscribe()
     }
-  }, [])
+  }, [router])
 
   const signInWithEmail = async (email: string, password: string) => {
     try {
@@ -162,22 +194,76 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOut = async () => {
     try {
-      console.log('=== AuthProvider signOut ===')
+      console.log('=== AuthProvider signOut 開始 ===')
       setLoading(true)
       
-      const { error } = await supabase.auth.signOut()
+      // Braveブラウザでセッションが既にクリアされている可能性をチェック
+      const currentSession = await supabase.auth.getSession()
+      console.log('現在のセッション状態:', currentSession.data.session ? 'あり' : 'なし')
       
-      if (!error) {
-        console.log('サインアウト成功: 状態をクリア')
-        setUser(null)
-        setSession(null)
+      // セッションが存在する場合のみサインアウト処理を実行
+      if (currentSession.data.session) {
+        const { error } = await supabase.auth.signOut()
+        
+        if (error) {
+          console.error('サインアウト失敗:', error)
+          // AuthSessionMissingErrorの場合は成功として扱う
+          if (error.message?.includes('Auth session missing')) {
+            console.log('セッションが既にクリアされているため、成功として処理')
+          } else {
+            return { error }
+          }
+        } else {
+          console.log('サインアウト成功')
+        }
       } else {
-        console.error('サインアウト失敗:', error)
+        console.log('セッションが既に存在しないため、クリーンアップのみ実行')
       }
       
-      return { error }
+      // 状態を確実にクリア
+      setUser(null)
+      setSession(null)
+      
+      // Braveブラウザの場合、強制的にリロードすることでセッションクリアを確実にする
+      if (isBrave()) {
+        console.log('Braveブラウザ検出: 強制リロードでセッションクリア')
+        // ローカルストレージもクリア
+        try {
+          localStorage.removeItem('supabase.auth.token')
+          sessionStorage.clear()
+        } catch (e) {
+          console.log('ストレージクリア中にエラー（無視）:', e)
+        }
+        window.location.href = '/'
+        return { error: null }
+      }
+      
+      // 他のブラウザは通常のリダイレクト
+      setTimeout(() => {
+        if (router.pathname !== '/') {
+          router.push('/')
+        }
+      }, 200)
+      
+      return { error: null }
     } catch (err) {
       console.error('サインアウト例外:', err)
+      
+      // AuthSessionMissingErrorの場合は成功として扱う
+      if (err instanceof Error && err.message?.includes('Auth session missing')) {
+        console.log('セッションなしエラーを成功として処理')
+        setUser(null)
+        setSession(null)
+        
+        if (isBrave()) {
+          window.location.href = '/'
+        } else {
+          router.push('/')
+        }
+        
+        return { error: null }
+      }
+      
       return { error: err }
     } finally {
       setLoading(false)

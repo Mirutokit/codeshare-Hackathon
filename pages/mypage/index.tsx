@@ -745,7 +745,7 @@ const UserMyPage: React.FC = () => {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
           <h2>ログインが必要です</h2>
-          <Link href="/auth/login">
+          <Link href="/auth/userlogin">
             <MyPageButton variant="primary">ログインページへ</MyPageButton>
           </Link>
         </div>

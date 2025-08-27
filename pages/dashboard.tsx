@@ -12,13 +12,13 @@ const DashboardPage: React.FC = () => {
   // 認証チェック
   React.useEffect(() => {
     if (!loading && !user) {
-      router.push('/auth/login')
+      router.push('/auth/userlogin')
     }
   }, [user, loading, router])
 
   const handleSignOut = async () => {
     await signOut()
-    router.push('/auth/login')
+    router.push('/auth/userlogin')
   }
 
   if (loading) {
@@ -88,9 +88,12 @@ const DashboardPage: React.FC = () => {
                 </div>
               </div>
 
-              <div style={{ marginTop: '1rem' }}>
+              <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem'  }}>
                 <Link href="/" className="cta-primary">
-                  事業所検索ページに戻る
+                  検索ページ
+                </Link>
+                <Link href="/mypage" className="cta-primary">
+                  マイページ
                 </Link>
               </div>
             </div>

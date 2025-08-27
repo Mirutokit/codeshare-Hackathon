@@ -374,7 +374,7 @@ const VerifyEmail: React.FC = () => {
               <Button 
                 variant="primary" 
                 size="lg" 
-                href="/auth/login"
+                href="/auth/userlogin"
                 style={{ width: '100%' }}
               >
                 メール確認後、ログインする →

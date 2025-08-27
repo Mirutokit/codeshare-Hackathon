@@ -12,7 +12,7 @@ interface AuthGuardProps {
 export const AuthGuard: React.FC<AuthGuardProps> = ({ 
   children, 
   requireAuth = true, 
-  redirectTo = '/auth/login' 
+  redirectTo = '/auth/userlogin' 
 }) => {
   const { user, loading } = useAuth();
   const router = useRouter();

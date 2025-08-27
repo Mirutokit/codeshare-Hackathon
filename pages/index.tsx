@@ -1118,7 +1118,7 @@ const SearchResults: React.FC<{
                 <div>
                   <p style={{ color: '#1e40af', fontWeight: '500', margin: 0 }}>ブックマーク機能について</p>
                   <p style={{ color: '#1e40af', fontSize: '0.875rem', marginTop: '0.25rem', margin: 0 }}>
-                    <Link href="/auth/login" style={{ textDecoration: 'underline', color: '#1d4ed8' }}>
+                    <Link href="/auth/userlogin" style={{ textDecoration: 'underline', color: '#1d4ed8' }}>
                       ログイン
                     </Link>
                     すると、気になる事業所をブックマークして後で確認できます。
@@ -1522,7 +1522,7 @@ const HomePage: React.FC = () => {
               ) : (
                 // ログインしていない場合のブックマークタブ（視覚的フィードバック強化型）
                 <div
-                  onClick={() => router.push('/auth/login')}
+                  onClick={() => router.push('/auth/userlogin')}
                   style={{
                     flex: 1,
                     padding: isMobile ? '0.75rem 0.5rem' : '1rem 2rem',
