@@ -1159,15 +1159,20 @@ const HomePage: React.FC = () => {
     if (router.isReady) {
       // URLに検索パラメータがある場合のみ復元処理を実行
       const hasSearchParams = Object.keys(router.query).some(key => 
-        ['q', 'district', 'services', 'available', 'page'].includes(key)
+        ['q', 'district', 'services', 'available', 'page', 'view'].includes(key)
       );
       
       if (hasSearchParams) {
         const filters = decodeSearchFilters(router.query);
-        // ページ情報を取得
         const page = parseInt((router.query.page as string) || '1');
-        
-        console.log('📄 URLから検索条件を復元:', { filters, page });
+        const viewParam = router.query.view as string;
+        if (viewParam === 'map') {
+          setViewMode('map');
+        } else if (viewParam === 'list') {
+          setViewMode('list');
+        }
+
+        console.log('📄 URLから検索条件を復元:', { filters, page, viewParam });
         
         setInitialFilters(filters);
         setLastSearchFilters(filters);
@@ -1304,8 +1309,8 @@ const HomePage: React.FC = () => {
     
     // URLパラメータを更新（検索条件を保持）
     const urlParams = encodeSearchFilters(filters);
-    // ページ情報は常に含める（1ページ目でも）
     urlParams.page = page.toString();
+    urlParams.view = forceViewMode || viewMode;
     
     const queryString = new URLSearchParams(urlParams).toString();
     console.log('🔗 URL更新:', queryString);
