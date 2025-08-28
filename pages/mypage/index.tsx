@@ -145,7 +145,6 @@ const MyPageButton: React.FC<{
 }
 
 // マイページコンポーネント
-// ここからマイページ
 const UserMyPage: React.FC = () => {
   const router = useRouter()
   const { user, signOut } = useAuthContext()
@@ -771,10 +770,9 @@ const UserMyPage: React.FC = () => {
       </div>
     )
   }
+  
   const isLoggedIn = !!user
 
-  //こっからreturn
-  //目印
   return (
     <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
       <Head>
@@ -783,10 +781,10 @@ const UserMyPage: React.FC = () => {
 
       {/* ヘッダー */}
       <Header 
-      isLoggedIn={isLoggedIn}
-      signOut={signOut}
-      variant="mypage"           // mypage仕様
-      showContactButton={true} // お問い合わせボタン表示
+        isLoggedIn={isLoggedIn}
+        signOut={signOut}
+        variant="mypage"
+        showContactButton={true}
       />
 
       <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '2rem 1rem' }}>
@@ -798,18 +796,6 @@ const UserMyPage: React.FC = () => {
           <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
             プロフィール情報の確認・編集やブックマークの管理ができます
           </p>
-          {/* デバッグ情報（開発時のみ） */}
-          <div style={{ 
-            marginTop: '1rem', 
-            padding: '0.5rem', 
-            background: '#f0fdf4', 
-            border: '1px solid #bbf7d0',
-            borderRadius: '0.25rem',
-            fontSize: '0.75rem',
-            color: '#166534'
-          }}>
-            ✅ 修正版: usersテーブル + user_detailsテーブル直接操作
-          </div>
         </div>
 
         {/* タブナビゲーション */}
@@ -888,9 +874,6 @@ const UserMyPage: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#111827', margin: 0 }}>
                   基本情報
-                  <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                    (usersテーブル)
-                  </span>
                 </h3>
                 <MyPageButton
                   variant={isEditing ? "secondary" : "primary"}
@@ -1006,9 +989,6 @@ const UserMyPage: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#111827', margin: 0 }}>
                   個人情報
-                  <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                    (user_detailsテーブル)
-                  </span>
                 </h3>
                 <MyPageButton
                   variant={isEditing ? "secondary" : "primary"}
@@ -1137,9 +1117,6 @@ const UserMyPage: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#111827', margin: 0 }}>
                   サポート情報
-                  <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                    (user_detailsテーブル)
-                  </span>
                 </h3>
                 <MyPageButton
                   variant={isEditing ? "secondary" : "primary"}
@@ -1421,10 +1398,10 @@ const UserMyPage: React.FC = () => {
                   アカウントを削除すると、以下のデータが完全に削除されます：
                 </p>
                 <ul style={{ fontSize: '0.75rem', color: '#7f1d1d', marginBottom: '1rem', paddingLeft: '1rem' }}>
-                  <li>usersテーブルのデータ（基本情報）</li>
-                  <li>user_detailsテーブルのデータ（詳細プロフィール）</li>
-                  <li>user_bookmarksテーブルのデータ（ブックマーク）</li>
-                  <li>認証情報（ログイン情報）</li>
+                  <li>基本情報</li>
+                  <li>詳細プロフィール</li>
+                  <li>ブックマーク</li>
+                  <li>認証情報</li>
                 </ul>
                 <p style={{ fontSize: '0.875rem', color: '#7f1d1d', marginBottom: '1rem' }}>
                   <strong>この操作は取り消せません。</strong>
@@ -1483,7 +1460,8 @@ const UserMyPage: React.FC = () => {
                           {facility.name}
                         </h4>
                         <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                          📍 {facility.district}
+                          <MapPin size={16} style={{ display: 'inline-block', marginRight: '0.25rem', verticalAlign: 'middle' }} />
+                          {facility.district}
                         </p>
                         {facility.description && (
                           <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem', lineHeight: '1.5' }}>
@@ -1494,10 +1472,13 @@ const UserMyPage: React.FC = () => {
                         )}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.75rem', color: '#9ca3af' }}>
                           {facility.phone_number && (
-                            <span>📞 {facility.phone_number}</span>
+                            <span>
+                              <Phone size={12} style={{ display: 'inline-block', marginRight: '0.25rem', verticalAlign: 'middle' }} />
+                              {facility.phone_number}
+                            </span>
                           )}
                           {facility.website_url && (
-                            <span>🌐 ウェブサイトあり</span>
+                            <span>ウェブサイトあり</span>
                           )}
                         </div>
                       </div>
