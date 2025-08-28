@@ -1,4 +1,4 @@
-// components/providers/AuthProvider.tsx
+// components/providers/AuthProvider.tsx - 完全修正版
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
@@ -38,6 +38,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return (navigator as any).brave && (navigator as any).brave.isBrave
   }
 
+  // ユーザー情報にuser_typeを追加する関数
+  const enrichUserWithType = async (user: User): Promise<User> => {
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('user_type')
+        .eq('id', user.id)
+        .single()
+      
+      if (userData?.user_type) {
+        return {
+          ...user,
+          user_metadata: {
+            ...user.user_metadata,
+            user_type: userData.user_type
+          }
+        }
+      }
+    } catch (error) {
+      console.error('ユーザータイプの取得に失敗:', error)
+    }
+    
+    return user
+  }
+
   useEffect(() => {
     const getSession = async () => {
       try {
@@ -57,8 +82,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.log('初期セッション:', session?.user?.id || 'なし')
         }
         
+        if (session?.user) {
+          const enrichedUser = await enrichUserWithType(session.user)
+          setUser(enrichedUser)
+        } else {
+          setUser(null)
+        }
+        
         setSession(session)
-        setUser(session?.user ?? null)
       } catch (err) {
         console.error('セッション取得例外:', err)
         setSession(null)
@@ -80,8 +111,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           isBrave: isBrave()
         })
         
+        if (session?.user) {
+          try {
+            const enrichedUser = await enrichUserWithType(session.user)
+            setUser(enrichedUser)
+          } catch (error) {
+            console.error('ユーザー情報の取得に失敗:', error)
+            setUser(session.user)
+          }
+        } else {
+          setUser(null)
+        }
+        
         setSession(session)
-        setUser(session?.user ?? null)
         setLoading(false)
 
         // SIGNED_OUT イベントの場合のみ、ログインページ以外からのリダイレクトを防ぐ
@@ -108,42 +150,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [router])
 
   const signInWithEmail = async (email: string, password: string) => {
-  try {
-    console.log('=== AuthProvider signInWithEmail ===', { email })
-    setLoading(true)
-    
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
-    
-    // ログイン成功時にユーザータイプを確認してリダイレクト
-    if (!error && data?.user) {
-      try {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('user_type')
-          .eq('id', data.user.id)
-          .single()
-        
-        console.log('ユーザータイプ確認:', userData?.user_type)
-        
-        // AuthProvider内でリダイレクト処理を削除し、各フォームに任せる
-        // または統一的にここでリダイレクトするかを決める
-        
-      } catch (userTypeError) {
-        console.error('ユーザータイプ取得エラー:', userTypeError)
+    try {
+      console.log('=== AuthProvider signInWithEmail ===', { email })
+      setLoading(true)
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+      
+      // ログイン成功時にユーザータイプを取得
+      if (!error && data?.user) {
+        try {
+          const enrichedUser = await enrichUserWithType(data.user)
+          setUser(enrichedUser)
+          console.log('ユーザータイプ取得済み:', enrichedUser.user_metadata?.user_type)
+        } catch (userTypeError) {
+          console.error('ユーザータイプ取得エラー:', userTypeError)
+          setUser(data.user) // エラーの場合も元のユーザー情報は設定
+        }
       }
+      
+      return { data, error }
+    } catch (err) {
+      console.error('サインイン例外:', err)
+      return { data: null, error: err }
+    } finally {
+      setLoading(false)
     }
-    
-    return { data, error }
-  } catch (err) {
-    console.error('サインイン例外:', err)
-    return { data: null, error: err }
-  } finally {
-    setLoading(false)
   }
-}
 
   const signUpWithEmail = async (email: string, password: string, fullName: string) => {
     try {
@@ -169,10 +204,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         password,
         options: {
           data: {
-            full_name: fullName
+            full_name: fullName,
+            user_type: 'user' // デフォルトは一般利用者
           }
         }
       })
+      
+      // サインアップ成功時にユーザータイプを取得
+      if (!error && data?.user) {
+        try {
+          const enrichedUser = await enrichUserWithType(data.user)
+          setUser(enrichedUser)
+        } catch (userTypeError) {
+          console.error('ユーザータイプ取得エラー:', userTypeError)
+          setUser(data.user) // エラーの場合も元のユーザー情報は設定
+        }
+      }
       
       console.log('=== AuthProvider signUpWithEmail完了 ===')
       console.log('結果:', {

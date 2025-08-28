@@ -1,377 +1,291 @@
-// components/layout/Header.tsx
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { useDevice } from '../../hooks/useDevice';
+// components/layout/Header.tsx - 修正版
+import React from 'react'
+import Link from 'next/link'
+import { User, LogOut, Settings, Building2, Users } from 'lucide-react'
+import { useAuthContext } from '@/components/providers/AuthProvider'
+import { getMyPagePath, getUserType } from '@/lib/utils/userType'
 
-// ★ 統一されたprops型定義
 interface HeaderProps {
-  isLoggedIn: boolean;
-  signOut: () => Promise<{ error?: any }>;
-  variant?: 'home' | 'mypage';        // ページの種類
-  showContactButton?: boolean;        // お問い合わせボタンの表示制御
-  customTitle?: string;              // カスタムタイトル
-  hideSubtitle?: boolean;            // サブタイトルの非表示制御
+  isLoggedIn: boolean
+  signOut: () => Promise<{ error?: any }>
+  variant?: 'home' | 'mypage'
+  showContactButton?: boolean
 }
 
-// ★ メインのHeaderコンポーネント（デバイス判定）
-export default function Header({ 
-  isLoggedIn, 
-  signOut,
-  variant = 'home',
-  showContactButton = true,
-  customTitle,
-  hideSubtitle = false
-}: HeaderProps) {
-  const { isMobile, isDesktop } = useDevice();
-
-  const commonProps = {
-    isLoggedIn,
-    signOut,
-    variant,
-    showContactButton,
-    customTitle,
-    hideSubtitle
-  };
-
-  if (isMobile) {
-    return <MobileHeader {...commonProps} />;
-  }
-  return <DesktopHeader {...commonProps} />;
-}
-
-// ★ スマホ版ヘッダー
-function MobileHeader({ 
+const Header: React.FC<HeaderProps> = ({ 
   isLoggedIn, 
   signOut, 
-  variant, 
-  showContactButton, 
-  customTitle, 
-  hideSubtitle 
-}: HeaderProps) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  variant = 'home', 
+  showContactButton = false 
+}) => {
+  const { user } = useAuthContext()
+  
+  // ユーザータイプの取得
+  const userType = getUserType(user)
+  const myPagePath = getMyPagePath(user)
 
-  // ページによってタイトルを変更
-  const getTitle = () => {
-    if (customTitle) return customTitle;
-    if (variant === 'mypage') return 'ケアコネクト';
-    return 'ケアコネクト';
-  };
+  const handleLogout = async () => {
+    const { error } = await signOut()
+    if (error) {
+      console.error("ログアウトエラー:", error.message)
+      alert("ログアウトに失敗しました")
+    }
+  }
 
   return (
-    <header style={{
-      background: variant === 'mypage' ? '#f8fafc' : 'white', // mypageは背景を薄く
-      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+    <header style={{ 
+      backgroundColor: 'white', 
       borderBottom: '1px solid #e5e7eb',
-      padding: '0.5rem 0',
-      position: 'relative'
+      padding: '1rem 0',
+      position: 'sticky',
+      top: 0,
+      zIndex: 50
     }}>
-      <div style={{
-        maxWidth: '80rem',
-        margin: '0 auto',
-        padding: '0 1rem'
+      <div style={{ 
+        maxWidth: '80rem', 
+        margin: '0 auto', 
+        padding: '0 1rem',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
       }}>
-        {/* メインバー */}
+        {/* ロゴ部分 */}
+        <Link 
+          href="/" 
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.75rem',
+            textDecoration: 'none',
+            cursor: 'pointer',
+            transition: 'opacity 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            (e.target as HTMLElement).style.opacity = '0.8'
+          }}
+          onMouseLeave={(e) => {
+            (e.target as HTMLElement).style.opacity = '1'
+          }}
+        >
+          <div style={{
+            width: '2.5rem',
+            height: '2.5rem',
+            background: '#22c55e',
+            borderRadius: '0.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontSize: '1.25rem',
+            fontWeight: 'bold'
+          }}>
+            C
+          </div>
+          <span style={{ 
+            fontSize: '1.25rem', 
+            fontWeight: 700, 
+            color: '#111827' 
+          }}>
+            ケアコネクト
+          </span>
+        </Link>
+
+        {/* 右側のナビゲーション */}
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
-          justifyContent: 'space-between'
+          gap: '1rem' 
         }}>
-          {/* ロゴ */}
-          <Link href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <div style={{
-                width: '2rem', height: '2rem', 
-                background:'#22c55e', 
-                borderRadius: '0.5rem',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}>
-                <span style={{ color: 'white', fontWeight: 'bold', fontSize: '1.125rem' }}>C</span>
-              </div>
-              <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#111827' }}>
-                {getTitle()}
-              </span>
-            </div>
-          </Link>
-
-          {/* ハンバーガーメニュー */}
-          <button 
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '1.5rem',
-              cursor: 'pointer',
-              padding: '0.5rem'
-            }}
-          >
-            {isMenuOpen ? '✕' : '☰'}
-          </button>
-        </div>
-
-        {/* サブタイトル - variant や hideSubtitle で制御 */}
-        {!hideSubtitle && (
-          <div style={{ 
-            fontSize: '0.75rem', 
-            color: '#6b7280',
-            marginTop: '0.5rem'
-          }}>
-            {variant === 'mypage' 
-              ? 'アカウント設定・お気に入り管理' 
-              : '東京都の障害福祉サービス事業所検索システム'
-            }
-          </div>
-        )}
-
-        {/* モバイルメニュー */}
-        {isMenuOpen && (
-          <div style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            backgroundColor: 'white',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-            zIndex: 50,
-            padding: '1rem'
-          }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {/* ホームリンクをmypageの時だけ表示 */}
-              {variant === 'mypage' && (
-                <Link href="/" style={{ 
-                  padding: '0.75rem', 
-                  background: '#f3f4f6', 
-                  color: '#374151', 
-                  textDecoration: 'none', 
-                  borderRadius: '0.375rem',
-                  textAlign: 'center'
-                }}>
-                  ホームに戻る
-                </Link>
-              )}
-              
-              {isLoggedIn ? (
-                <>
-                  {variant !== 'mypage' && (
-                    <Link href="/mypage" style={{ 
-                      padding: '0.75rem', 
-                      background: '#22c55e', 
-                      color: 'white', 
-                      textDecoration: 'none', 
-                      borderRadius: '0.375rem',
-                      textAlign: 'center'
-                    }}>
-                      マイページ
-                    </Link>
-                  )}
-                  <button
-                    onClick={async () => {
-                      setIsMenuOpen(false);
-                      await signOut();
-                    }}
-                    style={{
-                      padding: '0.75rem',
-                      background: '#f3f4f6',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.375rem',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    ログアウト
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link href="/auth/userlogin" style={{ 
-                    padding: '0.75rem', 
-                    background: '#f3f4f6', 
-                    color: '#374151', 
-                    textDecoration: 'none', 
-                    borderRadius: '0.375rem',
-                    textAlign: 'center'
-                  }}>
-                    利用者ログイン
-                  </Link>
-                  <Link href="/auth/facilitylogin" style={{ 
-                    padding: '0.75rem', 
-                    background: '#22c55e', 
-                    color: 'white', 
-                    textDecoration: 'none', 
-                    borderRadius: '0.375rem',
-                    textAlign: 'center'
-                  }}>
-                    施設ログイン
-                  </Link>
-                </>
-              )}
-              
-              {/* お問い合わせボタン - showContactButtonで制御 */}
-              {showContactButton && (
-                <button style={{
-                  padding: '0.75rem',
-                  background: '#22c55e',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '0.375rem',
-                  cursor: 'pointer'
-                }}>
-                  お問い合わせ
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    </header>
-  );
-}
-
-// ★ PC版ヘッダー（既存のDesktopHeaderを同様に修正）
-function DesktopHeader({ 
-  isLoggedIn, 
-  signOut, 
-  variant, 
-  showContactButton, 
-  hideSubtitle 
-}: HeaderProps) {
-  return (
-    <header style={{
-      background: variant === 'mypage' ? '#f8fafc' : 'white',
-      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-      borderBottom: '1px solid #e5e7eb',
-      padding: '1rem 0'
-    }}>
-      <div style={{
-        maxWidth: '80rem',
-        margin: '0 auto',
-        padding: '0 1.5rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-          <Link href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <div style={{
-                width: '2rem', height: '2rem', 
-                background: '#22c55e',
-                borderRadius: '0.5rem',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}>
-                <span style={{ color: 'white', fontWeight: 'bold', fontSize: '1.125rem' }}>C</span>
-              </div>
-              <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#111827' }}>ケアコネクト</span>
-            </div>
-          </Link>
-          
-          {!hideSubtitle && (
-            <span style={{ fontSize: '16px', margin: 0 }}>
-              {variant === 'mypage' 
-                ? ''
-                : '東京都の障害福祉サービス事業所検索システム'
-              }
-            </span>
-          )}
-        </div>
-        
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          {/* ホームリンク（mypageの時のみ） */}
-          {variant === 'mypage' && (
-            <>
-              <Link href="/" style={{ 
-                padding: '0.5rem 0.75rem', 
+          {/* お問い合わせボタン（オプション） */}
+          {showContactButton && (
+            <Link 
+              href="/contact" 
+              style={{ 
                 fontSize: '0.875rem', 
-                fontWeight: '500', 
-                color: '#374151', 
-                background: '#f3f4f6', 
-                borderRadius: '0.375rem', 
-                textDecoration: 'none' 
-              }}>
-                ホームに戻る
-              </Link>
-              <span style={{ color: '#d1d5db', fontSize: '1rem' }}>|</span>
-            </>
+                color: '#6b7280', 
+                textDecoration: 'none',
+                padding: '0.5rem 1rem',
+                borderRadius: '0.375rem',
+                border: '1px solid #d1d5db',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                (e.target as HTMLAnchorElement).style.backgroundColor = '#f9fafb'
+                ;(e.target as HTMLAnchorElement).style.borderColor = '#22c55e'
+                ;(e.target as HTMLAnchorElement).style.color = '#22c55e'
+              }}
+              onMouseLeave={(e) => {
+                (e.target as HTMLAnchorElement).style.backgroundColor = 'transparent'
+                ;(e.target as HTMLAnchorElement).style.borderColor = '#d1d5db'
+                ;(e.target as HTMLAnchorElement).style.color = '#6b7280'
+              }}
+            >
+              お問い合わせ
+            </Link>
           )}
 
+          {/* ログイン状態に応じた表示 */}
           {isLoggedIn ? (
-            <>
-              {variant !== 'mypage' && (
-                <>
-                  <Link href="/mypage" style={{ 
-                    padding: '0.5rem 0.75rem', 
-                    fontSize: '0.875rem', 
-                    fontWeight: '500', 
-                    color: 'white', 
-                    background: '#22c55e', 
-                    borderRadius: '0.375rem', 
-                    textDecoration: 'none' 
-                  }}>
-                    マイページ
-                  </Link>
-                  <span style={{ color: '#d1d5db', fontSize: '1rem' }}>|</span>
-                </>
-              )}
-              <button
-                onClick={signOut}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '1rem' 
+            }}>
+              {/* ユーザータイプ表示 */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.875rem',
+                color: '#6b7280'
+              }}>
+                {userType === 'facility' ? (
+                  <>
+                    <Building2 size={16} />
+                    <span>事業者</span>
+                  </>
+                ) : (
+                  <>
+                    <Users size={16} />
+                    <span>利用者</span>
+                  </>
+                )}
+                <span>: {user?.user_metadata?.full_name || user?.email}</span>
+              </div>
+
+              {/* マイページボタン */}
+              <Link 
+                href={myPagePath}
                 style={{
-                  padding: '0.5rem 0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  color: '#22c55e',
+                  textDecoration: 'none',
                   fontSize: '0.875rem',
-                  fontWeight: '500',
-                  color: '#374151',
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
+                  fontWeight: 500,
+                  padding: '0.5rem 1rem',
                   borderRadius: '0.375rem',
-                  cursor: 'pointer'
+                  border: '1px solid #22c55e',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  (e.target as HTMLAnchorElement).style.backgroundColor = '#22c55e'
+                  ;(e.target as HTMLAnchorElement).style.color = 'white'
+                }}
+                onMouseLeave={(e) => {
+                  (e.target as HTMLAnchorElement).style.backgroundColor = 'transparent'
+                  ;(e.target as HTMLAnchorElement).style.color = '#22c55e'
                 }}
               >
+                <User size={16} />
+                マイページ
+              </Link>
+
+              {/* ログアウトボタン */}
+              <button
+                onClick={handleLogout}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  color: '#6b7280',
+                  background: 'none',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '0.375rem',
+                  padding: '0.5rem 1rem',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f9fafb'
+                  e.currentTarget.style.borderColor = '#ef4444'
+                  e.currentTarget.style.color = '#ef4444'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent'
+                  e.currentTarget.style.borderColor = '#d1d5db'
+                  e.currentTarget.style.color = '#6b7280'
+                }}
+              >
+                <LogOut size={16} />
                 ログアウト
               </button>
-              {showContactButton && <span style={{ color: '#d1d5db', fontSize: '1rem' }}>|</span>}
-            </>
+            </div>
           ) : (
-            <>
-              <Link href="/auth/userlogin" style={{ 
-                padding: '0.5rem 0.75rem', 
-                fontSize: '0.875rem', 
-                fontWeight: '500', 
-                color: '#374151', 
-                background: '#f3f4f6', 
-                borderRadius: '0.375rem', 
-                textDecoration: 'none' 
-              }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.75rem' 
+            }}>
+              {/* 利用者ログインボタン */}
+              <Link 
+                href="/auth/userlogin" 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.5rem',
+                  color: '#6b7280',
+                  textDecoration: 'none',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  padding: '0.5rem 1rem',
+                  borderRadius: '0.375rem',
+                  border: '1px solid #e5e7eb',
+                  transition: 'all 0.2s',
+                  background: 'white'
+                }}
+                onMouseEnter={(e) => {
+                  (e.target as HTMLAnchorElement).style.backgroundColor = '#f9fafb'
+                  ;(e.target as HTMLAnchorElement).style.borderColor = '#22c55e'
+                  ;(e.target as HTMLAnchorElement).style.color = '#22c55e'
+                }}
+                onMouseLeave={(e) => {
+                  (e.target as HTMLAnchorElement).style.backgroundColor = 'white'
+                  ;(e.target as HTMLAnchorElement).style.borderColor = '#e5e7eb'
+                  ;(e.target as HTMLAnchorElement).style.color = '#6b7280'
+                }}
+              >
+                <Users size={16} />
                 利用者ログイン
               </Link>
-              <span style={{ color: '#d1d5db', fontSize: '1rem' }}>|</span>
-              <Link href="/auth/facilitylogin" style={{ 
-                padding: '0.5rem 0.75rem', 
-                fontSize: '0.875rem', 
-                fontWeight: '500', 
-                color: 'white', 
-                background: '#22c55e', 
-                borderRadius: '0.375rem', 
-                textDecoration: 'none' 
-              }}>
-                施設ログイン
+
+              {/* 事業者ログインボタン */}
+              <Link 
+                href="/auth/facilitylogin" 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.5rem',
+                  color: '#22c55e',
+                  textDecoration: 'none',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  padding: '0.5rem 1rem',
+                  borderRadius: '0.375rem',
+                  border: '1px solid #22c55e',
+                  transition: 'all 0.2s',
+                  background: 'white'
+                }}
+                onMouseEnter={(e) => {
+                  (e.target as HTMLAnchorElement).style.backgroundColor = '#22c55e'
+                  ;(e.target as HTMLAnchorElement).style.color = 'white'
+                }}
+                onMouseLeave={(e) => {
+                  (e.target as HTMLAnchorElement).style.backgroundColor = 'white'
+                  ;(e.target as HTMLAnchorElement).style.color = '#22c55e'
+                }}
+              >
+                <Building2 size={16} />
+                事業者ログイン
               </Link>
-              {showContactButton && <span style={{ color: '#d1d5db', fontSize: '1rem' }}>|</span>}
-            </>
-          )}
-          
-          {showContactButton && (
-            <button style={{ 
-              padding: '0.5rem 0.75rem', 
-              fontSize: '0.875rem', 
-              fontWeight: '500', 
-              color: 'white', 
-              background: '#22c55e', 
-              borderRadius: '0.375rem', 
-              border: 'none', 
-              cursor: 'pointer' 
-            }}>
-              お問い合わせ
-            </button>
+            </div>
           )}
         </div>
       </div>
     </header>
-  );
+  )
 }
+
+export default Header

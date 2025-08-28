@@ -437,15 +437,14 @@ const UserMyPage: React.FC = () => {
     
     const { data: userUpdateData, error: userUpdateError } = await supabase
       .from('users')
-      .upsert({
-        id: authenticatedUserId,
-        email: authenticatedUserEmail,
+      .update({
+        // emailは更新対象から外す
         full_name: profileData.full_name,
         phone_number: profileData.phone_number || null,
         district: profileData.district || null,
-        user_type: 'user',
         updated_at: new Date().toISOString()
       })
+      .eq('id', authenticatedUserId) // idで更新対象のユーザーを特定
       .select()
 
     if (userUpdateError) {
