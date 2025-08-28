@@ -746,7 +746,7 @@ const FacilityDetailPage: React.FC = () => {
                     fontWeight: '600',
                     marginBottom: '1rem'
                   }}>
-                    ✅ 利用可能なサービス ({availableServices.length}件)
+                    利用できるサービス ({availableServices.length}件)
                   </h4>
                   <div style={{ display: 'grid', gap: isMobile ? '0.75rem' : '1rem' }}>
                     {availableServices.map((service) => (
@@ -770,7 +770,7 @@ const FacilityDetailPage: React.FC = () => {
                     fontWeight: '600',
                     marginBottom: '1rem'
                   }}>
-                    ⌒ 現在利用できないサービス ({unavailableServices.length}件)
+                    現在利用できないサービス ({unavailableServices.length}件)
                   </h4>
                   <div style={{ display: 'grid', gap: isMobile ? '0.75rem' : '1rem' }}>
                     {unavailableServices.map((service) => (

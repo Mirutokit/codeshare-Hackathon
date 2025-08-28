@@ -622,7 +622,7 @@ const SearchFilterComponent: React.FC<{
               checked={availabilityOnly}
               onChange={(e) => setAvailabilityOnly(e.target.checked)}
             />
-            <span className="filter-checkbox-label" style={{ fontSize: '1.25rem', fontWeight: '500' }}>空きのある事務所のみ</span>
+            <span className="filter-checkbox-label" style={{ fontSize: '1.25rem', fontWeight: '500' }}>空きのある事業所のみ</span>
           </label>
           <button
             type="submit"
