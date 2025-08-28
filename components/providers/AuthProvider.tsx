@@ -108,29 +108,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [router])
 
   const signInWithEmail = async (email: string, password: string) => {
-    try {
-      console.log('=== AuthProvider signInWithEmail ===', { email })
-      setLoading(true)
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      })
-      
-      console.log('サインイン結果:', {
-        success: !error,
-        userId: data?.user?.id || 'なし',
-        error: error?.message || 'なし'
-      })
-      
-      return { data, error }
-    } catch (err) {
-      console.error('サインイン例外:', err)
-      return { data: null, error: err }
-    } finally {
-      setLoading(false)
+  try {
+    console.log('=== AuthProvider signInWithEmail ===', { email })
+    setLoading(true)
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    })
+    
+    // ログイン成功時にユーザータイプを確認してリダイレクト
+    if (!error && data?.user) {
+      try {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('user_type')
+          .eq('id', data.user.id)
+          .single()
+        
+        console.log('ユーザータイプ確認:', userData?.user_type)
+        
+        // AuthProvider内でリダイレクト処理を削除し、各フォームに任せる
+        // または統一的にここでリダイレクトするかを決める
+        
+      } catch (userTypeError) {
+        console.error('ユーザータイプ取得エラー:', userTypeError)
+      }
     }
+    
+    return { data, error }
+  } catch (err) {
+    console.error('サインイン例外:', err)
+    return { data: null, error: err }
+  } finally {
+    setLoading(false)
   }
+}
 
   const signUpWithEmail = async (email: string, password: string, fullName: string) => {
     try {

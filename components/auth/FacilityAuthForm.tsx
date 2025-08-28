@@ -21,13 +21,12 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
     email: '',
     password: ''
   })
-  const [registerData, setRegisterData] = useState({
-    email: '',
-    password: '',
-    fullName: '',
-    businessName: '',
-    businessType: ''
-  })
+  // registerDataの状態を簡素化
+const [registerData, setRegisterData] = useState({
+  email: '',
+  password: '',
+  fullName: '' // 事業所名、事業種別を削除
+})
   
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -68,133 +67,151 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
     }
   }
 
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (loading || authLoading) return
-    
-    setLoading(true)
-    setError(null)
-    setSuccess(null)
+// 簡素化されたhandleRegisterSubmit関数
 
-    // バリデーション
-    if (!registerData.email || !registerData.password || !registerData.fullName || 
-        !registerData.businessName || !registerData.businessType) {
-      setError('すべての項目を入力してください')
-      setLoading(false)
-      return
-    }
+const handleRegisterSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  
+  if (loading || authLoading) return
+  
+  setLoading(true)
+  setError(null)
+  setSuccess(null)
 
-    if (registerData.password.length < 6) {
-      setError('パスワードは6文字以上で入力してください')
-      setLoading(false)
-      return
-    }
+  // バリデーション（基本情報のみ）
+  if (!registerData.email || !registerData.password || !registerData.fullName) {
+    setError('すべての項目を入力してください')
+    setLoading(false)
+    return
+  }
 
-    try {
-      console.log('=== 事業者新規登録開始 ===')
-      console.log('フォームデータ:', registerData)
+  if (registerData.password.length < 6) {
+    setError('パスワードは6文字以上で入力してください')
+    setLoading(false)
+    return
+  }
 
-      // AuthProvider経由でサインアップ
-      const { data: authData, error: authError } = await signUpWithEmail(
-        registerData.email,
-        registerData.password,
-        registerData.businessName // 表示名として事業所名を使用
-      )
+  try {
+    console.log('=== 事業者新規登録開始（簡素化版） ===')
 
-      if (authError) {
-        console.error('認証エラー:', authError)
-        
-        let errorMessage = 'アカウント作成に失敗しました'
-        
-        if (authError.message) {
-          if (authError.message.includes('already registered') || 
-              authError.message.includes('User already registered')) {
-            errorMessage = 'このメールアドレスは既に登録されています'
-          } else if (authError.message.includes('invalid email') ||
-                     authError.message.includes('Invalid email')) {
-            errorMessage = '無効なメールアドレスです'
-          } else if (authError.message.includes('password') ||
-                     authError.message.includes('Password')) {
-            errorMessage = 'パスワードが要件を満たしていません（6文字以上の英数字）'
-          } else if (authError.message.includes('network') ||
-                     authError.message.includes('fetch')) {
-            errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください'
-          } else {
-            errorMessage = `登録に失敗しました: ${authError.message}`
-          }
+    // Step 1: メタデータ付きで事業者ユーザー作成
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: registerData.email,
+      password: registerData.password,
+      options: {
+        data: {
+          full_name: registerData.fullName,
+          user_type: 'facility' // 事業者として識別
         }
-        
-        setError(errorMessage)
+      }
+    })
+
+    if (authError) {
+      console.error('認証エラー:', authError)
+      setError(getAuthErrorMessage(authError))
+      setLoading(false)
+      return
+    }
+
+    const userId = authData.user?.id
+    if (!userId) {
+      throw new Error('ユーザーIDが取得できませんでした')
+    }
+
+    console.log('Step 1完了 - ユーザーID:', userId)
+
+    // Step 2: handle_new_user処理待機
+    console.log('Step 2: handle_new_user処理待機中...')
+    await new Promise(resolve => setTimeout(resolve, 2000))
+
+    // Step 3: 基本的なfacilityレコードを作成（詳細は後でマイページで設定）
+    console.log('Step 3: 基本facility情報作成中...')
+    const { error: facilityError } = await supabase
+      .from('facilities')
+      .insert({
+        user_id: userId,
+        name: '事業所名を設定してください', // デフォルト値
+        description: '事業所の詳細情報を入力してください',
+        address: '住所を入力してください',
+        district: '新宿区', // デフォルト値
+        phone_number: null,
+        is_active: false // 詳細設定完了まで非公開
+      })
+
+    if (facilityError) {
+      console.error('facility作成エラー:', facilityError)
+      
+      // 手動でpublic.usersレコード作成を試行
+      console.log('手動でpublic.usersレコード作成を試行...')
+      await supabase.rpc('create_user_manually', {
+        p_user_id: userId,
+        p_email: registerData.email,
+        p_full_name: registerData.fullName,
+        p_user_type: 'facility'
+      })
+      
+      // 再度facilityレコード作成を試行
+      const { error: retryError } = await supabase
+        .from('facilities')
+        .insert({
+          user_id: userId,
+          name: '事業所名を設定してください',
+          description: '事業所の詳細情報を入力してください',
+          address: '住所を入力してください',
+          district: '新宿区',
+          phone_number: null,
+          is_active: false
+        })
+      
+      if (retryError) {
+        setError('事業者アカウント作成に失敗しました。サポートまでお問い合わせください。')
         setLoading(false)
         return
       }
+    }
 
-      const userId = authData.user?.id
-      if (!userId) {
-        throw new Error('ユーザーIDが取得できませんでした')
-      }
+    console.log('事業者アカウント作成完了')
 
-      console.log('認証成功、ユーザーID:', userId)
+    if (authData.user?.email_confirmed_at) {
+      setSuccess('事業者アカウント作成が完了しました！事業者マイページで事業所情報を設定してください。')
+      setTimeout(() => router.push('/business/mypage'), 2000)
+    } else {
+      setSuccess('事業者アカウント作成が完了しました！メール確認後、事業者マイページで事業所情報を設定してください。')
+      setTimeout(() => router.push('/auth/verify-email'), 2000)
+    }
 
-      // 事業者データベースレコードの作成
-      try {
-        console.log('=== 事業者データベースレコード作成開始 ===')
-        
-        // 事業者データベースレコードの作成
-const { data: businessResult, error: businessError } = await supabase
-  .rpc('create_facility_user', {
-    p_auth_user_id: userId,
-    p_email: registerData.email,
-    p_full_name: registerData.fullName,
-    p_business_name: registerData.businessName,
-    p_business_type: registerData.businessType,
-    p_phone_number: null
-  })
-
-// 成功後、user_typeが正しく設定されているか確認（デバッグ用）
-if (businessResult?.success) {
-  const { data: userCheck } = await supabase
-    .from('users')
-    .select('user_type')
-    .eq('id', userId)
-    .single()
-  
-  console.log('User type after registration:', userCheck?.user_type)
+  } catch (err: any) {
+    console.error('登録プロセスエラー:', err)
+    setError(err.message || 'アカウント作成に失敗しました')
+  } finally {
+    setLoading(false)
+  }
 }
 
-        if (businessError) {
-          console.error('事業者レコード作成エラー:', businessError)
-          setError(`事業者データ保存に失敗しましたが、認証は完了しています: ${businessError.message}`)
-          setSuccess('認証は完了しています。事業者管理画面でプロフィール設定を完了してください。')
-        } else if (!businessResult?.success) {
-          console.error('事業者作成処理失敗:', businessResult)
-          setError(`事業者データ保存に失敗しました: ${businessResult?.error || '不明なエラー'}`)
-          setSuccess('認証は完了していますが、事業所プロフィール作成で問題が発生しました。')
-        } else {
-          console.log('事業者レコード作成成功')
-          if (authData.user?.email_confirmed_at) {
-            setSuccess('事業者アカウント作成が完了しました！事業者マイページで詳細情報を登録してください。')
-            setTimeout(() => router.push('/business/mypage'), 2000)
-          } else {
-            setSuccess('事業者アカウント作成が完了しました！メール確認後、事業者マイページで詳細情報を登録してください。')
-            setTimeout(() => router.push('/auth/verify-email'), 2000)
-          }
-        }
-
-      } catch (dbError) {
-        console.error('データベース処理例外:', dbError)
-        setError('データベース処理で予期しないエラーが発生しました')
-        setSuccess('認証は完了していますが、プロフィール作成で問題が発生しました。')
-      }
-
-    } catch (err: any) {
-      console.error('登録プロセス全体エラー:', err)
-      setError(err.message || 'アカウント作成に失敗しました')
-    } finally {
-      setLoading(false)
+// エラーメッセージのヘルパー関数
+const getAuthErrorMessage = (error: any): string => {
+  if (error.message) {
+    if (error.message.includes('already registered') || 
+        error.message.includes('User already registered')) {
+      return 'このメールアドレスは既に登録されています'
+    } else if (error.message.includes('invalid email') ||
+               error.message.includes('Invalid email')) {
+      return '無効なメールアドレスです'
+    } else if (error.message.includes('password') ||
+               error.message.includes('Password')) {
+      return 'パスワードが要件を満たしていません（6文字以上の英数字）'
+    } else if (error.message.includes('network') ||
+               error.message.includes('fetch')) {
+      return 'ネットワークエラーが発生しました。インターネット接続を確認してください'
+    } else if (error.message.includes('email_not_confirmed') || 
+               error.message.includes('Email not confirmed')) {
+      return 'メールアドレスの確認が完了していません。確認メールをご確認いただくか、開発環境の場合はSupabaseの設定をご確認ください。'
+    } else if (error.message.includes('Invalid login credentials')) {
+      return 'メールアドレスまたはパスワードが正しくありません。'
     }
   }
+  return `登録に失敗しました: ${error.message}`
+}
 
   const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLoginData(prev => ({
@@ -500,171 +517,146 @@ if (businessResult?.success) {
             </form>
           )}
 
-          {/* 新規登録フォーム */}
-          {activeTab === 'register' && (
-            <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
-                  <User size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
-                  担当者名 <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <Input
-                  name="fullName"
-                  type="text"
-                  value={registerData.fullName}
-                  onChange={handleRegisterChange}
-                  placeholder="山田 太郎"
-                  required
-                />
-              </div>
+          // 新規登録フォーム（簡素化版）
+{activeTab === 'register' && (
+  <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div>
+      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
+        <User size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
+        担当者名 <span style={{ color: '#ef4444' }}>*</span>
+      </label>
+      <Input
+        name="fullName"
+        type="text"
+        value={registerData.fullName}
+        onChange={handleRegisterChange}
+        placeholder="山田 太郎"
+        required
+      />
+      <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+        事業所の担当者名を入力してください
+      </p>
+    </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
-                  <Building2 size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
-                  事業所名 <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <Input
-                  name="businessName"
-                  type="text"
-                  value={registerData.businessName}
-                  onChange={handleRegisterChange}
-                  placeholder="株式会社ケアサービス"
-                  required
-                />
-              </div>
+    <div>
+      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
+        <Mail size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
+        メールアドレス <span style={{ color: '#ef4444' }}>*</span>
+      </label>
+      <Input
+        name="email"
+        type="email"
+        value={registerData.email}
+        onChange={handleRegisterChange}
+        placeholder="business@example.com"
+        required
+      />
+    </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
-                  <Building2 size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
-                  事業種別 <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <select
-                  name="businessType"
-                  value={registerData.businessType}
-                  onChange={handleRegisterChange}
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '0.375rem',
-                    fontSize: '0.875rem',
-                    background: 'white',
-                    color: '#374151'
-                  }}
-                >
-                  <option value="">事業種別を選択してください</option>
-                  <option value="訪問介護">訪問介護</option>
-                  <option value="通所介護">通所介護</option>
-                  <option value="訪問看護">訪問看護</option>
-                  <option value="居宅介護支援">居宅介護支援</option>
-                  <option value="小規模多機能型居宅介護">小規模多機能型居宅介護</option>
-                  <option value="その他">その他</option>
-                </select>
-              </div>
+    <div>
+      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
+        <Lock size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
+        パスワード <span style={{ color: '#ef4444' }}>*</span>
+      </label>
+      <div style={{ position: 'relative' }}>
+        <Input
+          name="password"
+          type={showPassword ? 'text' : 'password'}
+          value={registerData.password}
+          onChange={handleRegisterChange}
+          placeholder="6文字以上で入力"
+          required
+          style={{ paddingRight: '2.5rem' }}
+        />
+        <button
+          type="button"
+          onClick={() => setShowPassword(!showPassword)}
+          style={{
+            position: 'absolute',
+            right: '0.75rem',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            background: 'none',
+            border: 'none',
+            color: '#6b7280',
+            cursor: 'pointer',
+            padding: '0.25rem'
+          }}
+        >
+          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      </div>
+      <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+        6文字以上の英数字を組み合わせてください
+      </p>
+    </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
-                  <Mail size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
-                  メールアドレス <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <Input
-                  name="email"
-                  type="email"
-                  value={registerData.email}
-                  onChange={handleRegisterChange}
-                  placeholder="business@example.com"
-                  required
-                />
-              </div>
+    {/* 事業所情報は後で設定する旨を案内 */}
+    <div style={{ 
+      padding: '1rem', 
+      background: '#f0fdf4', 
+      borderRadius: '0.5rem',
+      fontSize: '0.875rem',
+      color: '#166534',
+      border: '1px solid #bbf7d0'
+    }}>
+      <p style={{ margin: '0 0 0.5rem 0', fontWeight: 500 }}>
+        📋 事業所情報について
+      </p>
+      <p style={{ margin: 0, fontSize: '0.8rem' }}>
+        事業所名・住所・サービス詳細などは、アカウント作成後にマイページで設定いただけます。
+      </p>
+    </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
-                  <Lock size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
-                  パスワード <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <Input
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={registerData.password}
-                    onChange={handleRegisterChange}
-                    placeholder="6文字以上で入力"
-                    required
-                    style={{ paddingRight: '2.5rem' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: '0.75rem',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      color: '#6b7280',
-                      cursor: 'pointer',
-                      padding: '0.25rem'
-                    }}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-                <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                  6文字以上の英数字を組み合わせてください
-                </p>
-              </div>
+    <Button
+      type="submit"
+      variant="primary"
+      size="lg"
+      loading={loading || authLoading}
+      className="w-full cta-primary"
+      disabled={loading || authLoading}
+      style={{ 
+        width: '100%', 
+        justifyContent: 'center',
+        padding: '0.75rem 1rem',
+        fontSize: '1rem',
+        fontWeight: 600
+      }}
+    >
+      {loading || authLoading ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ 
+            width: '1rem', 
+            height: '1rem', 
+            border: '2px solid transparent',
+            borderTop: '2px solid currentColor',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }}></div>
+          アカウント作成中...
+        </div>
+      ) : (
+        '事業者アカウント作成'
+      )}
+    </Button>
 
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                loading={loading || authLoading}
-                className="w-full cta-primary"
-                disabled={loading || authLoading}
-                style={{ 
-                  width: '100%', 
-                  justifyContent: 'center',
-                  padding: '0.75rem 1rem',
-                  fontSize: '1rem',
-                  fontWeight: 600
-                }}
-              >
-                {loading || authLoading ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{ 
-                      width: '1rem', 
-                      height: '1rem', 
-                      border: '2px solid transparent',
-                      borderTop: '2px solid currentColor',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite'
-                    }}></div>
-                    アカウント作成中...
-                  </div>
-                ) : (
-                  'アカウント作成'
-                )}
-              </Button>
-
-              {/* 利用規約・プライバシーポリシー */}
-              <div style={{ 
-                padding: '1rem', 
-                background: '#f9fafb', 
-                borderRadius: '0.5rem',
-                fontSize: '0.75rem',
-                color: '#6b7280',
-                textAlign: 'center'
-              }}>
-                アカウント作成により、
-                <a href="/terms" style={{ color: '#22c55e', textDecoration: 'none' }}>利用規約</a>
-                と
-                <a href="/privacy" style={{ color: '#22c55e', textDecoration: 'none' }}>プライバシーポリシー</a>
-                に同意したものとみなされます
-              </div>
-            </form>
-          )}
+    {/* 利用規約・プライバシーポリシー */}
+    <div style={{ 
+      padding: '1rem', 
+      background: '#f9fafb', 
+      borderRadius: '0.5rem',
+      fontSize: '0.75rem',
+      color: '#6b7280',
+      textAlign: 'center'
+    }}>
+      アカウント作成により、
+      <a href="/terms" style={{ color: '#22c55e', textDecoration: 'none' }}>利用規約</a>
+      と
+      <a href="/privacy" style={{ color: '#22c55e', textDecoration: 'none' }}>プライバシーポリシー</a>
+      に同意したものとみなされます
+    </div>
+  </form>
+)}
 
           {/* 開発環境でのヒント */}
           {process.env.NODE_ENV === 'development' && activeTab === 'login' && (
