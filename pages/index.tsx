@@ -6,6 +6,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useAuthContext } from '@/components/providers/AuthProvider';
 import { useBookmarks } from '@/lib/hooks/useBookmarks';
+import { getUserBookmarks } from '@/lib/supabase/bookmarks';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import { useDevice } from '../hooks/useDevice';
@@ -674,12 +675,17 @@ const FacilityCard: React.FC<{
   isBookmarked: boolean;
   onBookmarkToggle: (facilityId: number) => void;
   searchParams?: string;
-}> = ({ facility, isLoggedIn, isBookmarked, onBookmarkToggle, searchParams = '' }) => {
+  isBookmarkMode?: boolean;
+}> = ({ facility, isLoggedIn, isBookmarked, onBookmarkToggle, searchParams = '', isBookmarkMode = false }) => {
   const { isMobile } = useDevice(); // デバイス判定フックを使用
   
   const availableServices = facility.services?.filter(s => s.availability === 'available') || [];
   const unavailableServices = facility.services?.filter(s => s.availability === 'unavailable') || [];
-  const detailUrl = `/facilities/${facility.id}${searchParams ? `?${searchParams}` : ''}`;
+  
+  // ブックマークモードの場合は特別なパラメータを追加
+  const detailUrl = isBookmarkMode 
+    ? `/facilities/${facility.id}?bookmark=1`
+    : `/facilities/${facility.id}${searchParams ? `?${searchParams}` : ''}`;
   
   // スマホ版の簡略表示
   if (isMobile) {
@@ -1090,6 +1096,7 @@ const SearchResults: React.FC<{
                     isBookmarked={isBookmarked(facility.id)}
                     onBookmarkToggle={onBookmarkToggle}
                     searchParams={currentSearchParams}
+                    isBookmarkMode={isBookmarkMode}
                   />
                 ))}
               </div>
@@ -1151,12 +1158,95 @@ const HomePage: React.FC = () => {
   const [initialFilters, setInitialFilters] = useState<SearchFilters | undefined>(undefined);
   const [searchParamsString, setSearchParamsString] = useState('');
   const [preservedSearchParams, setPreservedSearchParams] = useState(''); // 検索状態を保持
+  const [isRestoringBookmarks, setIsRestoringBookmarks] = useState(false); // 重複実行防止用
 
   const isLoggedIn = !!user;
 
   // URLパラメータから検索条件を復元
   useEffect(() => {
     if (router.isReady) {
+      // ブックマークから戻ってきた場合の判定
+      if (router.query.from_bookmark === '1' && isLoggedIn && !isRestoringBookmarks) {
+        console.log('ブックマークから戻ってきました');
+        setIsRestoringBookmarks(true);
+        
+        // URLをクリア
+        router.replace('/', undefined, { shallow: true });
+        
+        // 直接Supabaseからブックマークを取得
+        const restoreBookmarksDirectly = async () => {
+          try {
+            setIsBookmarkMode(true);
+            setLoading(true);
+            setError(null);
+            setHasSearched(true);
+            
+            console.log('Supabaseからブックマークを直接取得...');
+            console.log('現在のユーザーID:', user?.id);
+            
+            if (!user?.id) {
+              throw new Error('ユーザーが見つかりません');
+            }
+            
+            // 直接Supabaseからブックマークデータを取得
+            const bookmarkData = await getUserBookmarks(user.id);
+            console.log('取得したブックマークデータ:', bookmarkData);
+
+            if (!bookmarkData || bookmarkData.length === 0) {
+              console.log('ブックマークが0件');
+              setFacilities([]);
+              setPagination(null);
+              setLoading(false);
+              setIsRestoringBookmarks(false);
+              return;
+            }
+
+            // ブックマークした事業所のIDを抽出
+            const bookmarkedFacilityIds = bookmarkData.map((bookmark) => parseInt(bookmark.facility));
+            console.log('ブックマーク事業所ID:', bookmarkedFacilityIds);
+
+            // 事業所詳細を取得
+            const facilityParams = new URLSearchParams();
+            facilityParams.append('facility_ids', JSON.stringify(bookmarkedFacilityIds));
+            
+            console.log('事業所取得API呼び出し:', `/api/search/facilities?${facilityParams.toString()}`);
+            
+            const facilityResponse = await fetch(`/api/search/facilities?${facilityParams.toString()}`);
+            
+            if (!facilityResponse.ok) {
+              const errorText = await facilityResponse.text();
+              console.error('事業所取得APIエラー:', errorText);
+              throw new Error(`事業所取得エラー: ${facilityResponse.status}`);
+            }
+
+            const facilityData: SearchResponse = await facilityResponse.json();
+            
+            console.log(`事業所取得完了: ${facilityData.facilities?.length || 0} 件`);
+
+            if (facilityData.facilities && facilityData.facilities.length > 0) {
+              setFacilities(facilityData.facilities);
+              setPagination(facilityData.pagination);
+            } else {
+              setFacilities([]);
+              setPagination(null);
+              setError('ブックマークした事業所が見つかりませんでした。');
+            }
+            
+          } catch (err) {
+            console.error('ブックマーク復元エラー:', err);
+            setError(err instanceof Error ? err.message : 'ブックマークの取得中にエラーが発生しました');
+            setFacilities([]);
+            setPagination(null);
+          } finally {
+            setLoading(false);
+            setIsRestoringBookmarks(false);
+          }
+        };
+        
+        restoreBookmarksDirectly();
+        return;
+      }
+
       // URLに検索パラメータがある場合のみ復元処理を実行
       const hasSearchParams = Object.keys(router.query).some(key => 
         ['q', 'district', 'services', 'available', 'page', 'view'].includes(key)
@@ -1180,7 +1270,7 @@ const HomePage: React.FC = () => {
         
         // 自動検索実行（URL更新なし）- ページ情報も含める
         executeSearchWithoutUrlUpdate(filters, page);
-      } else if (!hasSearched && !isBookmarkMode) {
+      } else if (!hasSearched && !isBookmarkMode && !isRestoringBookmarks) {
         // URLにパラメータがなく、まだ検索していない場合は初期状態を設定
         console.log('📋 初期画面を表示');
         setInitialFilters(undefined);
@@ -1193,7 +1283,7 @@ const HomePage: React.FC = () => {
         setSearchParamsString('');
       }
     }
-  }, [router.isReady]);
+  }, [router.isReady, isLoggedIn, isRestoringBookmarks]);
 
   const handleBookmarkToggle = async (facilityId: number) => {
     if (!isLoggedIn) {
@@ -1222,79 +1312,76 @@ const HomePage: React.FC = () => {
   };
 
   const handleShowBookmarks = async () => {
-    if (!isLoggedIn) {
+    if (!isLoggedIn || !user?.id) {
       alert('ブックマーク機能を使用するにはログインが必要です。');
       return;
     }
     
-    // ブックマークモードに切り替え
+    if (isBookmarkMode && loading) {
+      return;
+    }
+    
     setIsBookmarkMode(true);
     setLoading(true);
     setError(null);
-    setHasSearched(true); 
-    console.log('📖 ブックマーク表示開始...');
+    setHasSearched(true);
+    console.log('ブックマーク表示開始...');
     
-    // URLからクエリパラメータを削除（但しsearchParamsStringは保持）
     router.replace('/', undefined, { shallow: true });
     
     try {
-      await refreshBookmarks();
+      console.log('Supabaseからブックマークを直接取得...');
+      console.log('現在のユーザーID:', user.id);
       
-      setTimeout(async () => {
-        try {
-          console.log('現在のブックマーク:', bookmarks);
-          
-          if (bookmarks.length === 0) {
-            console.log('ブックマークが0件');
-            setFacilities([]);
-            setPagination(null);
-            setLoading(false);
-            return;
-          }
-          
-          const bookmarkedFacilityIds = bookmarks.map(bookmark => parseInt(bookmark.facility));
-          console.log('ブックマーク事業所ID:', bookmarkedFacilityIds);
+      // 直接Supabaseからブックマークデータを取得
+      const bookmarkData = await getUserBookmarks(user.id);
+      console.log('取得したブックマークデータ:', bookmarkData);
 
-          const params = new URLSearchParams();
-          params.append('facility_ids', JSON.stringify(bookmarkedFacilityIds));
-          
-          console.log('API呼び出し開始...');
-          const response = await fetch(`/api/search/facilities?${params.toString()}`);
-          
-          if (!response.ok) {
-            throw new Error(`API エラー: ${response.status}`);
-          }
+      if (!bookmarkData || bookmarkData.length === 0) {
+        console.log('ブックマークが0件');
+        setFacilities([]);
+        setPagination(null);
+        setLoading(false);
+        return;
+      }
 
-          const data: SearchResponse = await response.json();
-          
-          console.log(`✅ 取得完了: ${data.facilities?.length || 0} 件`);
+      // ブックマークした事業所のIDを抽出
+      const bookmarkedFacilityIds = bookmarkData.map((bookmark) => parseInt(bookmark.facility));
+      console.log('ブックマーク事業所ID:', bookmarkedFacilityIds);
 
-          if (data.facilities && data.facilities.length > 0) {
-            setFacilities(data.facilities);
-            setPagination(data.pagination);
-          } else {
-            console.log('❌ ブックマークした事業所が見つかりません');
-            setFacilities([]);
-            setPagination(null);
-            setError('ブックマークした事業所が見つかりませんでした。削除された可能性があります。');
-          }
-          
-          setLoading(false);
-          
-        } catch (err) {
-          console.error('❌ 事業所取得エラー:', err);
-          setError(err instanceof Error ? err.message : 'ブックマークした事業所の取得に失敗しました');
-          setFacilities([]);
-          setPagination(null);
-          setLoading(false);
-        }
-      }, 100);
+      // 事業所詳細を取得
+      const facilityParams = new URLSearchParams();
+      facilityParams.append('facility_ids', JSON.stringify(bookmarkedFacilityIds));
+      
+      console.log('事業所取得API呼び出し:', `/api/search/facilities?${facilityParams.toString()}`);
+      
+      const facilityResponse = await fetch(`/api/search/facilities?${facilityParams.toString()}`);
+      
+      if (!facilityResponse.ok) {
+        const errorText = await facilityResponse.text();
+        console.error('事業所取得APIエラー:', errorText);
+        throw new Error(`事業所取得エラー: ${facilityResponse.status}`);
+      }
+
+      const facilityData: SearchResponse = await facilityResponse.json();
+      
+      console.log(`事業所取得完了: ${facilityData.facilities?.length || 0} 件`);
+
+      if (facilityData.facilities && facilityData.facilities.length > 0) {
+        setFacilities(facilityData.facilities);
+        setPagination(facilityData.pagination);
+      } else {
+        setFacilities([]);
+        setPagination(null);
+        setError('ブックマークした事業所が見つかりませんでした。');
+      }
       
     } catch (err) {
-      console.error('❌ ブックマーク表示エラー:', err);
+      console.error('ブックマーク表示エラー:', err);
       setError(err instanceof Error ? err.message : 'ブックマークの取得中にエラーが発生しました');
       setFacilities([]);
       setPagination(null);
+    } finally {
       setLoading(false);
     }
   };
@@ -1660,10 +1747,7 @@ const HomePage: React.FC = () => {
       </main>
 
       {/* フッター */}
-      <Footer 
-        isLoggedIn={isLoggedIn}
-        signOut={signOut}
-      />
+      <Footer />
     </div>
   );
 };
