@@ -1,4 +1,4 @@
-// pages/business/mypage/index.tsx - 完全版事業者マイページ
+// pages/business/mypage/index.tsx - 修正版
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useAuthContext } from '@/components/providers/AuthProvider'
 import { supabase } from '@/lib/supabase/client'
+import Header from '../../components/layout/Header'
 
 const TOKYO_DISTRICTS = [
   // 23区
@@ -198,19 +199,19 @@ const FacilityMyPage: React.FC = () => {
           .rpc('get_facility_profile', { p_auth_user_id: authenticatedUserId })
 
         if (facilityError) {
-          console.error('事業者プロフィール取得エラー:', facilityError)
+          console.error('事業者プロファイル取得エラー:', facilityError)
           throw new Error(`事業者情報の取得に失敗しました: ${facilityError.message}`)
         }
 
         if (!facilityData?.success) {
-          console.error('事業者プロフィール取得失敗:', facilityData)
+          console.error('事業者プロファイル取得失敗:', facilityData)
           throw new Error('事業者情報が見つかりません')
         }
 
         const userData = facilityData.data.user_info || {}
         const facilityInfo = facilityData.data.facility_info || {}
 
-        // プロフィール完了判定
+        // プロファイル完了判定
         const isComplete = !!(
           facilityInfo.name && 
           facilityInfo.address && 
@@ -251,7 +252,7 @@ const FacilityMyPage: React.FC = () => {
         console.error('事業者データ読み込みエラー:', error)
         setMessage({ 
           type: 'error', 
-          text: `プロフィール情報の読み込みに失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}` 
+          text: `プロファイル情報の読み込みに失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}` 
         })
       } finally {
         setInitialLoading(false)
@@ -279,7 +280,7 @@ const FacilityMyPage: React.FC = () => {
     setPasswordData(prev => ({ ...prev, [name]: value }))
   }
 
-  // プロフィール更新処理
+  // プロファイル更新処理
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
@@ -288,7 +289,7 @@ const FacilityMyPage: React.FC = () => {
     setMessage(null)
 
     try {
-      console.log('=== 事業者プロフィール更新開始 ===')
+      console.log('=== 事業者プロファイル更新開始 ===')
       
       const authenticatedUserId = user.id
       
@@ -311,18 +312,18 @@ const FacilityMyPage: React.FC = () => {
         })
 
       if (updateError) {
-        console.error('プロフィール更新エラー:', updateError)
+        console.error('プロファイル更新エラー:', updateError)
         throw new Error(`更新に失敗しました: ${updateError.message}`)
       }
 
       if (!updateResult?.success) {
-        console.error('プロフィール更新失敗:', updateResult)
+        console.error('プロファイル更新失敗:', updateResult)
         throw new Error(updateResult?.message || '更新に失敗しました')
       }
       
-      console.log('プロフィール更新成功:', updateResult)
+      console.log('プロファイル更新成功:', updateResult)
 
-      setMessage({ type: 'success', text: '事業者プロフィールを更新しました' })
+      setMessage({ type: 'success', text: '事業者プロファイルを更新しました' })
       setIsEditing(false)
       
       const updatedProfile = {
@@ -334,10 +335,10 @@ const FacilityMyPage: React.FC = () => {
       setOriginalData(updatedProfile)
 
     } catch (error: any) {
-      console.error('事業者プロフィール更新エラー:', error)
+      console.error('事業者プロファイル更新エラー:', error)
       setMessage({ 
         type: 'error', 
-        text: error.message || 'プロフィール更新に失敗しました' 
+        text: error.message || 'プロファイル更新に失敗しました' 
       })
     } finally {
       setLoading(false)
@@ -441,6 +442,8 @@ const FacilityMyPage: React.FC = () => {
     )
   }
 
+  const isLoggedIn = !!user
+
   return (
     <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
       <Head>
@@ -448,60 +451,12 @@ const FacilityMyPage: React.FC = () => {
       </Head>
 
       {/* ヘッダー */}
-      <header style={{ 
-        background: 'white', 
-        borderBottom: '1px solid #e5e7eb',
-        padding: '1rem 0'
-      }}>
-        <div style={{ 
-          maxWidth: '80rem', 
-          margin: '0 auto', 
-          padding: '0 1rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          {/* ロゴ */}
-          <Link href="/" style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '0.75rem',
-            textDecoration: 'none'
-          }}>
-            <div style={{
-              width: '2.5rem',
-              height: '2.5rem',
-              background: '#22c55e',
-              borderRadius: '0.5rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontSize: '1.25rem',
-              fontWeight: 'bold'
-            }}>
-              C
-            </div>
-            <span style={{ 
-              fontSize: '1.25rem', 
-              fontWeight: 700, 
-              color: '#111827' 
-            }}>
-              ケアコネクト
-            </span>
-          </Link>
-
-          {/* ナビゲーション */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-              事業者: {profileData.name || user.email}
-            </span>
-            <MyPageButton variant="secondary" size="sm" onClick={handleLogout}>
-              ログアウト
-            </MyPageButton>
-          </div>
-        </div>
-      </header>
+      <Header 
+        isLoggedIn={isLoggedIn}
+        signOut={signOut}
+        variant="mypage"
+        showContactButton={true}
+      />
 
       <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '2rem 1rem' }}>
         {/* ページタイトル */}
@@ -516,7 +471,7 @@ const FacilityMyPage: React.FC = () => {
             事業所情報の管理・編集やサービス設定ができます
           </p>
           
-          {/* プロフィール完了ステータス */}
+          {/* プロファイル完了ステータス */}
           <div style={{ 
             display: 'inline-flex',
             alignItems: 'center',
@@ -532,13 +487,13 @@ const FacilityMyPage: React.FC = () => {
               <>
                 <CheckCircle size={16} style={{ color: '#22c55e' }} />
                 <span style={{ color: '#166534' }}>
-                  {profileData.is_active ? '検索対象として公開中' : 'プロフィール完了'}
+                  {profileData.is_active ? '検索対象として公開中' : 'プロファイル完了'}
                 </span>
               </>
             ) : (
               <>
                 <AlertCircle size={16} style={{ color: '#f59e0b' }} />
-                <span style={{ color: '#92400e' }}>プロフィール未完了</span>
+                <span style={{ color: '#92400e' }}>プロファイル未完了</span>
               </>
             )}
           </div>
@@ -823,7 +778,7 @@ const FacilityMyPage: React.FC = () => {
                         type="text"
                         value={profileData.address}
                         onChange={handleProfileChange}
-                        placeholder="東京都渋谷区神南1-2-3 ビル名 階数"
+                        placeholder="東京都渋谷区神南1-2-3 ビル名階数"
                         disabled={!isEditing}
                         required
                       />

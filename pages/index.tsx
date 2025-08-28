@@ -229,7 +229,7 @@ const SERVICE_CATEGORIES = {
   ],
 };
 
-// SearchFilterコンポーネント（検索状態復元対応）
+// SearchFilterコンポーネント（検索状態復元対応）- アコーディオン方式
 const SearchFilterComponent: React.FC<{
   onSearch: (filters: SearchFilters) => void;
   loading?: boolean;
@@ -240,6 +240,7 @@ const SearchFilterComponent: React.FC<{
   const [selectedServices, setSelectedServices] = useState<number[]>(initialFilters?.serviceIds || []);
   const [availabilityOnly, setAvailabilityOnly] = useState(initialFilters?.availabilityOnly || false);
   const [showServiceFilter, setShowServiceFilter] = useState(false);
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null); // アコーディオン用
   const { isMobile } = useDevice(); // デバイス判定フックを使用
 
   // 初期値が設定された場合の処理
@@ -276,6 +277,11 @@ const SearchFilterComponent: React.FC<{
 
   const clearServices = () => {
     setSelectedServices([]);
+  };
+
+  // カテゴリの展開/収縮
+  const toggleCategory = (category: string) => {
+    setExpandedCategory(expandedCategory === category ? null : category);
   };
 
   // 東京都の全市区町村リスト
@@ -377,7 +383,7 @@ const SearchFilterComponent: React.FC<{
           </div>
         </div>
 
-        {/* サービス選択パネル */}
+        {/* サービス選択パネル（アコーディオン方式） */}
         {showServiceFilter && (
           <div style={{ 
             marginTop: '1rem',
@@ -386,6 +392,7 @@ const SearchFilterComponent: React.FC<{
             borderRadius: '0.5rem',
             border: '1px solid #e5e7eb'
           }}>
+            {/* ヘッダー部分 */}
             <div style={{ 
               display: 'flex', 
               justifyContent: 'space-between', 
@@ -408,112 +415,189 @@ const SearchFilterComponent: React.FC<{
               </button>
             </div>
 
-            {Object.entries(SERVICE_CATEGORIES).map(([category, services]) => (
-              <div key={category} style={{ marginBottom: '1.5rem' }}>
-                <h4 style={{ 
+            {/* 選択済みサービスを上部に表示 */}
+            {selectedServices.length > 0 && (
+              <div style={{ 
+                marginBottom: '1.5rem',
+                padding: '1rem',
+                background: 'white',
+                borderRadius: '0.375rem',
+                border: '1px solid #d1d5db'
+              }}>
+                <div style={{ 
                   fontSize: '0.875rem',
                   fontWeight: '600',
                   color: '#374151',
-                  marginBottom: '0.75rem',
-                  paddingBottom: '0.5rem',
-                  borderBottom: '1px solid #e5e7eb'
+                  marginBottom: '0.5rem'
                 }}>
-                  {category}
-                </h4>
-                
+                  選択中のサービス ({selectedServices.length}件):
+                </div>
                 <div style={{ 
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                  display: 'flex',
+                  flexWrap: 'wrap',
                   gap: '0.5rem'
                 }}>
-                  {services.map((service) => (
-                    <label
-                      key={service.id}
-                      className="filter-checkbox-container"
-                      style={{ 
-                        padding: '0.5rem',
-                        background: selectedServices.includes(service.id) ? '#dcfce7' : 'white',
-                        borderRadius: '0.375rem',
-                        border: selectedServices.includes(service.id) ? '1px solid #22c55e' : '1px solid #e5e7eb',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        className="filter-checkbox"
-                        checked={selectedServices.includes(service.id)}
-                        onChange={() => handleServiceToggle(service.id)}
-                      />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ 
-                          fontWeight: 500, 
-                          fontSize: '0.875rem',
-                          color: '#111827',
-                          marginBottom: '0.25rem'
-                        }}>
-                          {service.name}
-                        </div>
-                        <div style={{ 
+                  {selectedServices.map(serviceId => {
+                    const service = allServices.find(s => s.id === serviceId);
+                    return service ? (
+                      <span
+                        key={serviceId}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          padding: '0.25rem 0.75rem',
+                          background: '#dcfce7',
+                          color: '#166534',
+                          borderRadius: '1rem',
                           fontSize: '0.75rem',
-                          color: '#6b7280',
-                          lineHeight: 1.3
-                        }}>
-                          {service.description}
-                        </div>
-                      </div>
-                    </label>
-                  ))}
+                          fontWeight: '500'
+                        }}
+                      >
+                        {service.name}
+                        <button
+                          type="button"
+                          onClick={() => handleServiceToggle(serviceId)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#166534',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem'
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ) : null;
+                  })}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            )}
 
-        {/* 選択されたサービスの表示 */}
-        {selectedServices.length > 0 && (
-          <div style={{ marginTop: '1rem' }}>
-            <div className="filter-label">選択中のサービス:</div>
-            <div style={{ 
-              display: 'flex', 
-              flexWrap: 'wrap', 
-              gap: '0.5rem',
-              marginTop: '0.5rem'
-            }}>
-              {selectedServices.map(serviceId => {
-                const service = allServices.find(s => s.id === serviceId);
-                return service ? (
-                  <span
-                    key={serviceId}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.25rem 0.75rem',
-                      background: '#dcfce7',
-                      color: '#166534',
-                      borderRadius: '1rem',
-                      fontSize: '0.875rem',
-                      fontWeight: 500
-                    }}
-                  >
-                    {service.name}
-                    <button
-                      type="button"
-                      onClick={() => handleServiceToggle(serviceId)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#166534',
-                        cursor: 'pointer',
-                        fontSize: '0.75rem'
-                      }}
-                    >
-                      ✕
-                    </button>
+            {/* カテゴリ別アコーディオン */}
+            {Object.entries(SERVICE_CATEGORIES).map(([category, services]) => (
+              <div key={category} style={{ marginBottom: '1rem' }}>
+                {/* カテゴリヘッダー（クリック可能） */}
+                <button
+                  type="button"
+                  onClick={() => toggleCategory(category)}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '0.75rem 1rem',
+                    background: expandedCategory === category ? '#f3f4f6' : 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    color: '#374151',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = '#f9fafb';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = expandedCategory === category ? '#f3f4f6' : 'white';
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span>{category}</span>
+                    {/* 選択されたサービス数を表示 */}
+                    {(() => {
+                      const selectedInCategory = services.filter(s => selectedServices.includes(s.id));
+                      return selectedInCategory.length > 0 ? (
+                        <span style={{
+                          fontSize: '0.75rem',
+                          padding: '0.125rem 0.5rem',
+                          background: '#22c55e',
+                          color: 'white',
+                          borderRadius: '0.75rem',
+                          fontWeight: '500'
+                        }}>
+                          {selectedInCategory.length}
+                        </span>
+                      ) : null;
+                    })()}
+                  </div>
+                  <span style={{ 
+                    transform: expandedCategory === category ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.2s'
+                  }}>
+                    ▼
                   </span>
-                ) : null;
-              })}
-            </div>
+                </button>
+
+                {/* カテゴリ内容（展開時のみ表示） */}
+                {expandedCategory === category && (
+                  <div style={{
+                    marginTop: '0.5rem',
+                    padding: '1rem',
+                    background: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '0.375rem',
+                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                  }}>
+                    <div style={{ 
+                      display: 'grid',
+                      gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(250px, 1fr))',
+                      gap: '0.75rem'
+                    }}>
+                      {services.map((service) => (
+                        <label
+                          key={service.id}
+                          className="filter-checkbox-container"
+                          style={{ 
+                            padding: '0.75rem',
+                            background: selectedServices.includes(service.id) ? '#dcfce7' : '#f9fafb',
+                            borderRadius: '0.375rem',
+                            border: selectedServices.includes(service.id) ? '2px solid #22c55e' : '1px solid #e5e7eb',
+                            transition: 'all 0.2s',
+                            cursor: 'pointer'
+                          }}
+                          onMouseOver={(e) => {
+                            if (!selectedServices.includes(service.id)) {
+                              e.currentTarget.style.border = '1px solid #d1d5db';
+                            }
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.border = selectedServices.includes(service.id) ? '2px solid #22c55e' : '1px solid #e5e7eb';
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            className="filter-checkbox"
+                            checked={selectedServices.includes(service.id)}
+                            onChange={() => handleServiceToggle(service.id)}
+                            style={{ marginRight: '0.5rem' }}
+                          />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ 
+                              fontWeight: 500, 
+                              fontSize: '0.875rem',
+                              color: '#111827',
+                              marginBottom: '0.25rem'
+                            }}>
+                              {service.name}
+                            </div>
+                            <div style={{ 
+                              fontSize: '0.75rem',
+                              color: '#6b7280',
+                              lineHeight: 1.3
+                            }}>
+                              {service.description}
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
@@ -713,7 +797,9 @@ const FacilityCard: React.FC<{
               color: '#111827',
               margin: 0,
               lineHeight: 1.3,
-              flex: 1
+              flex: 1,
+              overflowWrap: 'break-word',
+              maxWidth: 'calc(100% - 65px)'
             }}>
               {facility.name}
             </h3>
@@ -839,7 +925,7 @@ const FacilityCard: React.FC<{
       
       <div className="facility-info">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-          <h3 className="facility-name">{facility.name}</h3>
+          <h3 className="facility-name" style={{ overflowWrap: 'break-word', maxWidth: 'calc(100% - 85px)' }}>{facility.name}</h3>
           {isLoggedIn && (
             <button
               onClick={() => onBookmarkToggle(facility.id)}
@@ -1513,9 +1599,10 @@ const HomePage: React.FC = () => {
 
       {/* メインコンテンツ */}
       <main className="container mx-auto px-4 py-8">
-        {isLoggedIn && (
-          <section style={{ marginTop: '2rem', paddingBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', paddingLeft: '2rem' }}>
+        {isLoggedIn && isMobile && (
+
+          <section style={{ marginTop: '0.5rem', paddingBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', paddingLeft: '0.5rem' }}>
               <p style={{ 
                 margin: 0, 
                 fontSize: '1.125rem', 
@@ -1524,6 +1611,13 @@ const HomePage: React.FC = () => {
               }}>
                 ようこそ、{user?.user_metadata?.full_name || user?.email}さん
               </p>
+            </div>
+          </section>
+        )}
+         {!(isMobile && isLoggedIn) && (
+
+          <section style={{ marginTop: '0.5rem', paddingBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', paddingLeft: '0.5rem' }}>
             </div>
           </section>
         )}

@@ -28,7 +28,7 @@ const Footer: React.FC = () => {
             width: isMobile ? '32px' : '40px',
             height: isMobile ? '32px' : '40px',
             backgroundColor: '#22c55e',
-            borderRadius: '50%',
+            borderRadius: '0.5rem',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
