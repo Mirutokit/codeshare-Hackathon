@@ -1,16 +1,16 @@
-// pages/auth/facilitylogin.tsx （タブ式対応版）
+// pages/auth/facilitylogin.tsx - 事業者ログインページ
 import React from 'react'
 import Head from 'next/head'
-import TabbedAuthForm from '@/components/auth/TabbedAuthForm'
+import FacilityAuthForm from '@/components/auth/FacilityAuthForm'
 
 const FacilityLoginPage: React.FC = () => {
   return (
     <>
       <Head>
-        <title>施設ログイン - ケアコネクト</title>
-        <meta name="description" content="ケアコネクトの施設アカウントにログインして、ブックマークやメッセージ機能をご利用ください" />
+        <title>事業者ログイン - ケアコネクト</title>
+        <meta name="description" content="事業者向けログインページ" />
       </Head>
-      <TabbedAuthForm defaultTab="register" />
+      <FacilityAuthForm defaultTab="login" />
     </>
   )
 }
