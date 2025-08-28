@@ -227,7 +227,7 @@ const InfoCard: React.FC<{
 // 事業所詳細ページコンポーネント（レスポンシブ対応）
 const FacilityDetailPage: React.FC = () => {
   const router = useRouter();
-  const { id, ...searchParams } = router.query;
+  const { id, bookmark, ...searchParams } = router.query;
   const { user, signOut } = useAuthContext();
   const { isBookmarked, toggleBookmark } = useBookmarks();
   const { isMobile, isDesktop } = useDevice();
@@ -241,6 +241,12 @@ const FacilityDetailPage: React.FC = () => {
 
   // 検索に戻るためのURL構築（地図表示状態も考慮）
   const getBackToSearchUrl = () => {
+    // ブックマークモードから遷移した場合
+    if (bookmark === '1') {
+      return '/?from_bookmark=1'; // ブックマークから戻ってきたことを示すパラメータを追加
+    }
+
+    // 通常の検索から遷移した場合は既存のロジック
     const params = new URLSearchParams();
     
     const getString = (value: string | string[] | undefined): string => {
@@ -286,6 +292,12 @@ const FacilityDetailPage: React.FC = () => {
 
   // パンくずリストの表示テキストを取得
   const getBreadcrumbText = () => {
+    // ブックマークモードから遷移した場合
+    if (bookmark === '1') {
+      return 'ブックマーク';
+    }
+
+    // 通常の検索から遷移した場合は既存のロジック
     const hasParams = Object.keys(searchParams).some(key => key !== 'view' && searchParams[key]);
     const isMapView = searchParams.view === 'map' || !searchParams.view;
     
