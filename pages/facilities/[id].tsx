@@ -647,33 +647,37 @@ const FacilityDetailPage: React.FC = () => {
                 <div style={{
                   marginTop: '0.25rem',
                   display: 'grid',
-                  gridTemplateColumns: facility.phone_number ? '1fr 1fr' : '1fr',
+                  gridTemplateColumns: facility.phone_number ? 
+                    (isLoggedIn ? '1fr 1fr' : '1fr') : 
+                    (isLoggedIn ? '1fr' : 'none'),
                   gap: '1rem'
                 }}>
-                  <button
-                    onClick={handleDMClick}
-                    style={{
-                      padding: '0.875rem',
-                      backgroundColor: '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '0.5rem',
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem'
-                    }}
-                  >
-                    <MessageCircle size={16} />
-                    メッセージ
-                  </button>
+                  {/* メッセージボタン：ログイン時のみ表示 */}
+                  {isLoggedIn && (
+                    <button
+                      onClick={handleDMClick}
+                      style={{
+                        padding: '0.875rem',
+                        backgroundColor: '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      <MessageCircle size={16} />
+                      メッセージ
+                    </button>
+                  )}
 
                   {facility.phone_number && (
-                    <a
-                      href={`tel:${facility.phone_number}`}
+                    <a href={`tel:${facility.phone_number}`}
                       style={{
                         padding: '0.875rem',
                         backgroundColor: '#22c55e',
@@ -803,27 +807,29 @@ const FacilityDetailPage: React.FC = () => {
               {/* お問い合わせ情報 */}
               <InfoCard title="お問い合わせ" icon={<MessageCircle size={20} />}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <button
-                    onClick={handleDMClick}
-                    style={{
-                      padding: '0.875rem',
-                      backgroundColor: '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '0.5rem',
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem',
-                      width: '100%'
-                    }}
-                  >
-                    <MessageCircle size={16} />
-                    メッセージを送る
-                  </button>
+                  {isLoggedIn && (
+                    <button
+                      onClick={handleDMClick}
+                      style={{
+                        padding: '0.875rem',
+                        backgroundColor: '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        width: '100%'
+                      }}
+                    >
+                      <MessageCircle size={16} />
+                      メッセージを送る
+                    </button>
+                  )}
 
                   {facility.phone_number && (
                     <a
