@@ -4,7 +4,7 @@ import { useRouter } from 'next/router'
 import Head from 'next/head'
 import Link from 'next/link'
 import { CheckCircle, AlertCircle, Loader } from 'lucide-react'
-import { supabase } from '@/lib/supabase/client'
+import { supabase } from '@/lib/supabase'
 
 type AuthStatus = 'processing' | 'success' | 'error' | 'email_confirmed' | 'already_confirmed'
 

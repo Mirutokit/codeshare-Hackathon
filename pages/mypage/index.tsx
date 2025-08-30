@@ -656,77 +656,108 @@ const UserMyPage: React.FC = () => {
     }
   }
 
-  const handleDeleteAccount = async () => {
-    if (!confirm('本当にアカウントを削除しますか？この操作は取り消せません。')) {
-      return
+ const handleDeleteAccount = async () => {
+  if (!confirm('本当にアカウントを削除しますか？この操作は取り消せません。')) {
+    return
+  }
+  
+  if (!confirm('すべてのデータが失われます。本当に削除を実行しますか？')) {
+    return
+  }
+
+  try {
+    setLoading(true)
+    setMessage(null)
+    
+    console.log('アカウント削除開始:', user?.id)
+    
+    if (!user) {
+      throw new Error('ユーザー情報が取得できません')
+    }
+
+    // 現在のセッションを取得してデバッグ
+    console.log('セッション取得開始...')
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    console.log('セッション情報詳細:', {
+      hasSession: !!session,
+      hasAccessToken: !!session?.access_token,
+      tokenLength: session?.access_token?.length,
+      tokenType: session?.token_type,
+      expiresAt: session?.expires_at,
+      user: session?.user?.id,
+      sessionError: sessionError?.message
+    })
+    
+    if (sessionError) {
+      console.error('セッション取得エラー:', sessionError)
+      throw new Error(`セッション取得エラー: ${sessionError.message}`)
     }
     
-    if (!confirm('すべてのデータが失われます。本当に削除を実行しますか？')) {
-      return
+    if (!session?.access_token) {
+      console.error('アクセストークンが存在しません')
+      throw new Error('認証情報が取得できません。再ログインしてください。')
     }
 
-    try {
-      setLoading(true)
-      
-      console.log('アカウント削除開始:', user?.id)
-      
-      // 1. user_detailsテーブルからデータを削除
-      const { error: detailsError } = await supabase
-        .from('user_details')
-        .delete()
-        .eq('user_id', user?.id)
-
-      if (detailsError) {
-        console.error('user_details削除エラー:', detailsError)
-      } else {
-        console.log('user_details削除成功')
+    console.log('API呼び出し準備完了。リクエスト送信...')
+    
+    // APIエンドポイント呼び出し
+    const response = await fetch('/api/auth/delete-account', {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json'
       }
+    })
 
-      // 2. ブックマークを削除
-      const { error: bookmarkError } = await supabase
-        .from('user_bookmarks')
-        .delete()
-        .eq('user_id', user?.id)
+    console.log('API応答受信:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok
+    })
 
-      if (bookmarkError) {
-        console.error('ブックマーク削除エラー:', bookmarkError)
-      } else {
-        console.log('ブックマーク削除成功')
+    const responseText = await response.text()
+    console.log('レスポンス内容:', responseText)
+
+    if (!response.ok) {
+      let errorData
+      try {
+        errorData = JSON.parse(responseText)
+      } catch {
+        errorData = { error: responseText || 'Unknown error' }
       }
-
-      // 3. usersテーブルからデータを削除
-      const { error: userError } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', user?.id)
-
-      if (userError) {
-        console.error('ユーザー削除エラー:', userError)
-      } else {
-        console.log('ユーザー削除成功')
-      }
-
-      setMessage({ 
-        type: 'success', 
-        text: 'アカウントが削除されました。ご利用ありがとうございました。' 
-      })
-
-      // 3秒後にログアウトしてトップページに遷移
-      setTimeout(async () => {
-        await signOut()
-        router.push('/')
-      }, 3000)
-
-    } catch (error: any) {
-      console.error('アカウント削除エラー:', error)
-      setMessage({ 
-        type: 'error', 
-        text: 'アカウント削除に失敗しました' 
-      })
-    } finally {
-      setLoading(false)
+      throw new Error(errorData.error || 'アカウント削除に失敗しました')
     }
+
+    const result = JSON.parse(responseText)
+    console.log('アカウント削除成功:', result)
+
+    setMessage({ 
+      type: 'success', 
+      text: 'アカウントが削除されました。ご利用ありがとうございました。' 
+    })
+
+    // ストレージクリア
+    if (typeof window !== 'undefined') {
+      localStorage.clear()
+      sessionStorage.clear()
+    }
+
+    // 3秒後にトップページに遷移
+    setTimeout(() => {
+      window.location.href = '/'
+    }, 3000)
+
+  } catch (error: any) {
+    console.error('アカウント削除エラー:', error)
+    setMessage({ 
+      type: 'error', 
+      text: error.message || 'アカウント削除に失敗しました。しばらく後にもう一度お試しください。' 
+    })
+  } finally {
+    setLoading(false)
   }
+}
 
   // タブデータ
   const tabs = [
