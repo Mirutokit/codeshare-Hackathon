@@ -40,30 +40,45 @@ const TabbedAuthForm: React.FC<TabbedAuthFormProps> = ({ defaultTab = 'login' })
   }
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+  e.preventDefault()
+  setLoading(true)
+  setError(null)
 
-    try {
-      const { error } = await signInWithEmail(loginData.email, loginData.password)
-      
-      if (error) {
-        if (error.message.includes('email_not_confirmed') || error.message.includes('Email not confirmed')) {
-          setError('メールアドレスの確認が完了していません。確認メールをご確認いただくか、開発環境の場合はSupabaseの設定をご確認ください。')
-        } else if (error.message.includes('Invalid login credentials')) {
-          setError('メールアドレスまたはパスワードが正しくありません。')
-        } else {
-          setError('ログインに失敗しました: ' + error.message)
-        }
+  try {
+    const { error } = await signInWithEmail(loginData.email, loginData.password)
+    
+    if (error) {
+      if (error.message.includes('email_not_confirmed') || error.message.includes('Email not confirmed')) {
+        setError('メールアドレスの確認が完了していません。確認メールをご確認いただくか、開発環境の場合はSupabaseの設定をご確認ください。')
+      } else if (error.message.includes('Invalid login credentials')) {
+        setError('メールアドレスまたはパスワードが正しくありません。')
       } else {
-        router.push('/')
+        setError('ログインに失敗しました: ' + error.message)
       }
-    } catch (err) {
-      setError('ログインに失敗しました')
-    } finally {
-      setLoading(false)
+    } else {
+      // 成功メッセージを表示してから遷移
+      setSuccess('ログインに成功しました！ホームページに移動します...')
+      
+      // 複数の遷移方法を試行
+      setTimeout(async () => {
+        try {
+          // 方法1: Next.js router
+          await router.push('/')
+        } catch (routerError) {
+          console.error('Router push failed:', routerError)
+          // 方法2: window.location（フォールバック）
+          window.location.href = '/'
+        }
+      }, 1000)
     }
+  } catch (err) {
+    console.error('ログイン処理エラー:', err)
+    setError('ログインに失敗しました')
+  } finally {
+    // loadingをすぐに解除しない（遷移まで待つ）
+    setTimeout(() => setLoading(false), 2000)
   }
+}
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
