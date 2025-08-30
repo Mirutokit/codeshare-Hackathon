@@ -699,75 +699,75 @@ const Pagination: React.FC<{
   return (
     <div style={{
       display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: '0.5rem',
+      flexDirection: 'column', // 縦方向に配置
+      alignItems: 'center',    // 中央揃え
+      gap: '0.5rem',          // 要素間のスペース
       marginTop: '2rem',
+      marginLeft: '0rem',
       padding: '1rem'
     }}>
-      <button
-        onClick={() => onPageChange(page - 1)}
-        disabled={!hasPrev || loading}
-        style={buttonStyle(false, !hasPrev || loading)}
-      >
-        ← 前へ
-      </button>
-
-      {pageNumbers[0] > 1 && (
-        <>
-          <button
-            onClick={() => onPageChange(1)}
-            disabled={loading}
-            style={buttonStyle(false, loading)}
-          >
-            1
-          </button>
-          {pageNumbers[0] > 2 && (
-            <span style={{ color: '#9ca3af', padding: '0 0.5rem' }}>...</span>
-          )}
-        </>
-      )}
-
-      {pageNumbers.map((pageNum) => (
-        <button
-          key={pageNum}
-          onClick={() => onPageChange(pageNum)}
-          disabled={loading}
-          style={buttonStyle(pageNum === page, loading)}
-        >
-          {pageNum}
-        </button>
-      ))}
-
-      {pageNumbers[pageNumbers.length - 1] < pages && (
-        <>
-          {pageNumbers[pageNumbers.length - 1] < pages - 1 && (
-            <span style={{ color: '#9ca3af', padding: '0 0.5rem' }}>...</span>
-          )}
-          <button
-            onClick={() => onPageChange(pages)}
-            disabled={loading}
-            style={buttonStyle(false, loading)}
-          >
-            {pages}
-          </button>
-        </>
-      )}
-
-      <button
-        onClick={() => onPageChange(page + 1)}
-        disabled={!hasNext || loading}
-        style={buttonStyle(false, !hasNext || loading)}
-      >
-        次へ →
-      </button>
-
       <div style={{
-        marginLeft: '1rem',
-        fontSize: '0.875rem',
-        color: '#6b7280'
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: '0.5rem'
       }}>
-        {page}/{pages} ページ（全{pagination.total}件）
+        <button
+          onClick={() => onPageChange(page - 1)}
+          disabled={!hasPrev || loading}
+          style={buttonStyle(false, !hasPrev || loading)}
+        >
+          ← 前へ
+        </button>
+
+        {pageNumbers[0] > 1 && (
+          <>
+            <button
+              onClick={() => onPageChange(1)}
+              disabled={loading}
+              style={buttonStyle(false, loading)}
+            >
+              1
+            </button>
+            {pageNumbers[0] > 2 && (
+              <span style={{ color: '#9ca3af', padding: '0 0.5rem' }}>...</span>
+            )}
+          </>
+        )}
+
+        {pageNumbers.map((pageNum) => (
+          <button
+            key={pageNum}
+            onClick={() => onPageChange(pageNum)}
+            disabled={loading}
+            style={buttonStyle(pageNum === page, loading)}
+          >
+            {pageNum}
+          </button>
+        ))}
+
+        {pageNumbers[pageNumbers.length - 1] < pages && (
+          <>
+            {pageNumbers[pageNumbers.length - 1] < pages - 1 && (
+              <span style={{ color: '#9ca3af', padding: '0 0.5rem' }}>...</span>
+            )}
+            <button
+              onClick={() => onPageChange(pages)}
+              disabled={loading}
+              style={buttonStyle(false, loading)}
+            >
+              {pages}
+            </button>
+          </>
+        )}
+
+        <button
+          onClick={() => onPageChange(page + 1)}
+          disabled={!hasNext || loading}
+          style={buttonStyle(false, !hasNext || loading)}
+        >
+          次へ →
+        </button>
       </div>
     </div>
   );
@@ -819,7 +819,7 @@ const FacilityCard: React.FC<{
               lineHeight: 1.3,
               flex: 1,
               overflowWrap: 'break-word',
-              maxWidth: 'calc(100% - 65px)'
+              maxWidth: 'calc(100% - 15px)'
             }}>
               {facility.name}
             </h3>
@@ -856,7 +856,7 @@ const FacilityCard: React.FC<{
             alignItems: 'center',
             gap: '0.25rem'
           }}>
-            📍 {facility.district}
+           {facility.district}
           </p>
 
           {/* 提供サービス（簡略版） */}
@@ -874,27 +874,27 @@ const FacilityCard: React.FC<{
               flexWrap: 'wrap',
               gap: '0.25rem'
             }}>
-              {/* 利用可能なサービスを最大2つまで表示 */}
-              {availableServices.slice(0, 2).map((service, index) => (
+              {/* 利用可能なサービスを最大3つまで表示 */}
+              {availableServices.slice(0, 3).map((service, index) => (
                 <span
                   key={index}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    padding: '0.25rem 0.5rem',
-                    background: '#dcfce7',
-                    color: '#166534',
-                    borderRadius: '1rem',
-                    fontSize: '0.75rem',
-                    fontWeight: '500'
-                  }}
+                  className="service-tag available"
                 >
                   ◯ {service.service?.name || 'サービス'}
                 </span>
               ))}
+              {/* 利用不可能なサービスを最大2つまで表示 */}
+              {unavailableServices.slice(0, 2).map((service, index) => (
+                <span
+                  key={index}
+                  className="service-tag unavailable"
+                >
+                  × {service.service?.name || 'サービス'}
+                </span>
+              ))}
               
               {/* サービス数が2つ以上ある場合は「他X件」を表示 */}
-              {(availableServices.length + unavailableServices.length) > 2 && (
+              {(availableServices.length + unavailableServices.length) > 3 && (
                 <span style={{
                   padding: '0.25rem 0.5rem',
                   background: '#f3f4f6',
@@ -902,7 +902,7 @@ const FacilityCard: React.FC<{
                   borderRadius: '1rem',
                   fontSize: '0.75rem'
                 }}>
-                  他{(availableServices.length + unavailableServices.length) - 2}件
+                  他{(availableServices.length + unavailableServices.length) - 3}件
                 </span>
               )}
             </div>
@@ -979,7 +979,7 @@ const FacilityCard: React.FC<{
           )}
         </div>
         
-        <p className="facility-district">📍 {facility.district}</p>
+        <p className="facility-district">- {facility.district} -</p>
         
         {facility.description && (
           <p className="facility-description">
@@ -1013,9 +1013,9 @@ const FacilityCard: React.FC<{
                 × {service.service?.name || 'サービス'}
               </span>
             ))}
-            {(availableServices.length + unavailableServices.length) > 5 && (
+            {(availableServices.length + unavailableServices.length) > 3 && (
               <span className="more-services">
-                他{(availableServices.length + unavailableServices.length) - 5}件
+                他{(availableServices.length + unavailableServices.length) - 3}件
               </span>
             )}
           </div>
@@ -1163,10 +1163,10 @@ const SearchResults: React.FC<{
             <ToggleSwitch
               checked={viewMode === 'map'}
               onChange={(checked) => onViewModeChange(checked ? 'map' : 'list')}
-              leftLabel="リスト表示"
-              rightLabel="地図表示"
-              leftIcon="📋"
-              rightIcon="🗺️"
+              leftLabel="リスト"
+              rightLabel="地図"
+              leftIcon=""
+              rightIcon=""
               disabled={loading || isBookmarkMode}
             />
           </div>
@@ -1221,13 +1221,14 @@ const SearchResults: React.FC<{
           {!isLoggedIn && !isBookmarkMode && facilities.length > 0 && (
             <div style={{
               marginTop: '2rem',
+              marginBottom: '1.25rem',
               padding: '1rem',
               background: '#eff6ff',
               border: '1px solid #bfdbfe',
               borderRadius: '0.5rem'
             }}>
               <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-                <div style={{ color: '#2563eb', marginRight: '0.75rem' }}>💡</div>
+                <div style={{ color: '#2563eb', marginRight: '0.75rem'}}>💡</div>
                 <div>
                   <p style={{ color: '#1e40af', fontWeight: '500', margin: 0 }}>ブックマーク機能について</p>
                   <p style={{ color: '#1e40af', fontSize: '0.875rem', marginTop: '0.25rem', margin: 0 }}>
@@ -1618,7 +1619,9 @@ const HomePage: React.FC = () => {
       />
 
       {/* メインコンテンツ */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8" style={{
+        minHeight: isBookmarkMode ? 'calc(130vh - 200px)' : 'auto'
+      }}>
         {isLoggedIn && isMobile && (
 
           <section style={{ marginTop: '0.5rem', paddingBottom: '1rem' }}>

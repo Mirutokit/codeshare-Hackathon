@@ -195,7 +195,7 @@ const MapView: React.FC<{
            fontSize: '0.875rem',
            fontWeight: '500'
          }}>
-           <span>📍 {validFacilities.length}件の事業所を地図上に表示</span>
+           <span>{validFacilities.length}件の事業所を地図上に表示</span>
          </div>
        )}
      </div>

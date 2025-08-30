@@ -488,6 +488,7 @@ const TabbedAuthForm: React.FC<TabbedAuthFormProps> = ({ defaultTab = 'login' })
                   onChange={handleLoginChange}
                   placeholder="example@email.com"
                   required
+                  style={{ width: '12rem' }}
                 />
               </div>
 
@@ -502,17 +503,17 @@ const TabbedAuthForm: React.FC<TabbedAuthFormProps> = ({ defaultTab = 'login' })
                     type={showPassword ? 'text' : 'password'}
                     value={loginData.password}
                     onChange={handleLoginChange}
-                    placeholder="パスワードを入力"
+                    placeholder="password"
                     required
-                    style={{ paddingRight: '2.5rem' }}
+                    style={{ paddingRight: '2.5rem', width: '12rem'}}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     style={{
                       position: 'absolute',
-                      right: '0.75rem',
-                      top: '50%',
+                      right: '4.1rem',
+                      top: '60%',
                       transform: 'translateY(-50%)',
                       background: 'none',
                       border: 'none',
@@ -590,6 +591,7 @@ const TabbedAuthForm: React.FC<TabbedAuthFormProps> = ({ defaultTab = 'login' })
                   onChange={handleRegisterChange}
                   placeholder="山田 太郎"
                   required
+                  style={{ width: '12rem' }}
                 />
               </div>
 
@@ -605,6 +607,7 @@ const TabbedAuthForm: React.FC<TabbedAuthFormProps> = ({ defaultTab = 'login' })
                   onChange={handleRegisterChange}
                   placeholder="example@email.com"
                   required
+                  style={{ width: '12rem' }}
                 />
               </div>
 
@@ -621,15 +624,15 @@ const TabbedAuthForm: React.FC<TabbedAuthFormProps> = ({ defaultTab = 'login' })
                     onChange={handleRegisterChange}
                     placeholder="6文字以上で入力"
                     required
-                    style={{ paddingRight: '2.5rem' }}
+                    style={{ paddingRight: '2.5rem', width: '12rem' }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     style={{
                       position: 'absolute',
-                      right: '0.75rem',
-                      top: '50%',
+                      right: '3.9rem',
+                      top: '60%',
                       transform: 'translateY(-50%)',
                       background: 'none',
                       border: 'none',
@@ -694,21 +697,6 @@ const TabbedAuthForm: React.FC<TabbedAuthFormProps> = ({ defaultTab = 'login' })
                 に同意したものとみなされます
               </div>
             </form>
-          )}
-
-          {/* 開発環境でのヒント */}
-          {process.env.NODE_ENV === 'development' && activeTab === 'login' && (
-            <div style={{ 
-              marginTop: '1rem', 
-              padding: '0.75rem', 
-              background: '#f0f9ff', 
-              borderRadius: '0.375rem', 
-              border: '1px solid #bae6fd' 
-            }}>
-              <p style={{ fontSize: '0.75rem', color: '#0369a1', margin: 0 }}>
-                💡 <strong>開発環境</strong>: メール確認エラーが出る場合は、Supabaseで「Enable email confirmations」をOFFにしてください。
-              </p>
-            </div>
           )}
 
             {/* ゲストアクセス案内 */}

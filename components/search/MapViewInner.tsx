@@ -180,7 +180,7 @@ const FacilityPopup: React.FC<{
         fontSize: mobile ? '0.7rem' : '0.75rem',
         marginBottom: '0.75rem'
       }}>
-        📍 {facility.district}
+        {facility.district}
       </p>
       
       {facility.description && (

@@ -160,6 +160,16 @@ const UserMyPage: React.FC = () => {
   const [initialLoading, setInitialLoading] = useState(true)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkIsMobile()
+    window.addEventListener('resize', checkIsMobile)
+    return () => window.removeEventListener('resize', checkIsMobile)
+  }, [])
+  
   // DM関連の状態
   const [selectedConversation, setSelectedConversation] = useState<any>(null)
   const [showMessageThread, setShowMessageThread] = useState(false)
@@ -862,11 +872,34 @@ const UserMyPage: React.FC = () => {
       <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '2rem 1rem' }}>
         {/* ページタイトル */}
         <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-          <h1 style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.5rem' }}>
+          <h1 style={{ 
+            fontSize: '2rem', 
+            fontWeight: 'bold', 
+            color: '#111827', 
+            marginBottom: '0.5rem' 
+          }}>
             マイページ
           </h1>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-            プロフィール情報の確認・編集やブックマークの管理ができます
+          <p style={{ 
+            color: '#6b7280', 
+            fontSize: '0.875rem',
+            // PCでは一行表示、スマホでは自然な改行
+            maxWidth: '100%',
+            // メディアクエリ風の条件分岐は難しいので、長めの文章として調整
+            lineHeight: '1.5'
+          }}>
+            {/* PC表示用 (768px以上) */}
+            <span style={{ 
+              display: window?.innerWidth >= 768 ? 'inline' : 'none'
+            }}>
+              プロフィール情報の確認・編集やブックマークの管理ができます
+            </span>
+            {/* スマホ表示用 (768px未満) */}
+            <span style={{ 
+              display: window?.innerWidth < 768 ? 'inline' : 'none'
+            }}>
+              プロフィール情報の確認・編集や<br />ブックマークの管理ができます
+            </span>
           </p>
         </div>
 
@@ -891,7 +924,7 @@ const UserMyPage: React.FC = () => {
                   }}
                   style={{
                     flex: '1',
-                    minWidth: '120px',
+                    minWidth: '123px',
                     padding: '1rem 1.5rem',
                     background: activeTab === tab.key ? '#22c55e' : 'transparent',
                     color: activeTab === tab.key ? 'white' : '#6b7280',
