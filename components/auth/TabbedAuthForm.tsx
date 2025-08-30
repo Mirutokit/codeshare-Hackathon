@@ -1,5 +1,5 @@
 // components/auth/TabbedAuthForm.tsx
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
 import { ArrowLeft, Mail, Lock, Home, Eye, EyeOff, User } from 'lucide-react'
@@ -14,7 +14,7 @@ interface TabbedAuthFormProps {
 
 const TabbedAuthForm: React.FC<TabbedAuthFormProps> = ({ defaultTab = 'login' }) => {
   const router = useRouter()
-  const { signInWithEmail, signUpWithEmail, loading: authLoading } = useAuth()
+  const { user, signInWithEmail, signUpWithEmail, loading: authLoading } = useAuth()
   
   const [activeTab, setActiveTab] = useState<'login' | 'register'>(defaultTab)
   const [loginData, setLoginData] = useState({
@@ -31,6 +31,34 @@ const TabbedAuthForm: React.FC<TabbedAuthFormProps> = ({ defaultTab = 'login' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [isRedirecting, setIsRedirecting] = useState(false)
+
+  // 認証状態変更を監視してリダイレクト
+  useEffect(() => {
+    if (user && !authLoading && !isRedirecting) {
+      console.log('=== 認証状態検出、リダイレクト実行 ===')
+      console.log('User:', user.email)
+      console.log('Current path:', router.asPath)
+      
+      // ログインページにいる場合のみリダイレクト
+      if (router.asPath === '/auth/userlogin' || router.asPath.includes('/auth/userlogin')) {
+        console.log('ログインページからホームへリダイレクト')
+        
+        setIsRedirecting(true)
+        setSuccess('ログイン成功！ホームページに移動します...')
+        
+        setTimeout(() => {
+          // 複数の方法で確実にリダイレクト
+          try {
+            router.replace('/')
+          } catch (error) {
+            console.warn('Router failed, using window.location')
+            window.location.href = '/'
+          }
+        }, 1000)
+      }
+    }
+  }, [user, authLoading, router, isRedirecting])
 
   const handleTabChange = (tab: 'login' | 'register') => {
     setActiveTab(tab)
@@ -40,45 +68,39 @@ const TabbedAuthForm: React.FC<TabbedAuthFormProps> = ({ defaultTab = 'login' })
   }
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
-  e.preventDefault()
-  setLoading(true)
-  setError(null)
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
 
-  try {
-    const { error } = await signInWithEmail(loginData.email, loginData.password)
-    
-    if (error) {
-      if (error.message.includes('email_not_confirmed') || error.message.includes('Email not confirmed')) {
-        setError('メールアドレスの確認が完了していません。確認メールをご確認いただくか、開発環境の場合はSupabaseの設定をご確認ください。')
-      } else if (error.message.includes('Invalid login credentials')) {
-        setError('メールアドレスまたはパスワードが正しくありません。')
-      } else {
-        setError('ログインに失敗しました: ' + error.message)
-      }
-    } else {
-      // 成功メッセージを表示してから遷移
-      setSuccess('ログインに成功しました！ホームページに移動します...')
+    console.log('=== ログイン処理開始 ===')
+
+    try {
+      const { error } = await signInWithEmail(loginData.email, loginData.password)
       
-      // 複数の遷移方法を試行
-      setTimeout(async () => {
-        try {
-          // 方法1: Next.js router
-          await router.push('/')
-        } catch (routerError) {
-          console.error('Router push failed:', routerError)
-          // 方法2: window.location（フォールバック）
-          window.location.href = '/'
+      if (error) {
+        console.error('ログインエラー:', error)
+        
+        if (error.message.includes('email_not_confirmed') || error.message.includes('Email not confirmed')) {
+          setError('メールアドレスの確認が完了していません。確認メールをご確認いただくか、開発環境の場合はSupabaseの設定をご確認ください。')
+        } else if (error.message.includes('Invalid login credentials')) {
+          setError('メールアドレスまたはパスワードが正しくありません。')
+        } else {
+          setError('ログインに失敗しました: ' + error.message)
         }
-      }, 1000)
+      } else {
+        console.log('=== ログイン成功、認証状態変更を待機 ===')
+        setSuccess('ログインに成功しました。認証状態を更新中...')
+        
+        // 認証状態の変更はuseEffectで処理される
+        // ここでは手動リダイレクトはしない
+      }
+    } catch (err) {
+      console.error('ログイン処理例外:', err)
+      setError('ログインに失敗しました')
+    } finally {
+      setLoading(false)
     }
-  } catch (err) {
-    console.error('ログイン処理エラー:', err)
-    setError('ログインに失敗しました')
-  } finally {
-    // loadingをすぐに解除しない（遷移まで待つ）
-    setTimeout(() => setLoading(false), 2000)
   }
-}
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -232,6 +254,50 @@ const TabbedAuthForm: React.FC<TabbedAuthFormProps> = ({ defaultTab = 'login' })
 
   return (
     <div className="container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem 1rem' }}>
+      {/* 認証済みでリダイレクト中の場合は、リダイレクトオーバーレイを表示 */}
+      {isRedirecting && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '2rem',
+            borderRadius: '0.5rem',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+            textAlign: 'center',
+            border: '1px solid #e5e7eb'
+          }}>
+            <div style={{ 
+              width: '3rem', 
+              height: '3rem', 
+              border: '3px solid #22c55e',
+              borderTop: '3px solid transparent',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 1rem'
+            }}></div>
+            <p style={{ color: '#166534', fontWeight: 500, marginBottom: '0.5rem' }}>
+              ログイン完了！
+            </p>
+            <p style={{ color: '#166534', fontWeight: 500, marginBottom: '0.5rem' }}>
+              ホームページに移動しています...
+            </p>
+            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+              {user?.email} としてログイン中
+            </p>
+          </div>
+        </div>
+      )}
+
       <div style={{ maxWidth: '28rem', width: '100%' }}>
         {/* ヘッダーナビゲーション */}
         <div style={{ 

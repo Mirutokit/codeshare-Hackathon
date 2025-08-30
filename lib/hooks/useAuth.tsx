@@ -1,7 +1,6 @@
 // lib/hooks/useAuth.tsx - 統合版
 import { useContext } from 'react'
 import { AuthContext } from '@/components/providers/AuthProvider'
-
 import { supabase } from '@/lib/supabase'
 
 // AuthContextから値を取得するフック
@@ -18,6 +17,7 @@ export function useAuthContext() {
   return useAuth() // 同じものを参照
 }
 
+// 事業者向けサインアップ関数（既存機能を維持）
 export const signUpFacilityWithEmail = async (
   email: string,
   password: string,
