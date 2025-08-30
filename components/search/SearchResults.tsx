@@ -177,6 +177,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
         {!isLoggedIn && !isBookmarkMode && facilities.length > 0 && (
           <div style={{
             marginTop: '2rem',
+            marginBottom: '1.25rem',
             padding: '1rem',
             background: '#eff6ff',
             border: '1px solid #bfdbfe',

@@ -494,7 +494,7 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
           {/* ログインフォーム */}
           {activeTab === 'login' && (
             <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div>
+              <div style={{ textAlign: 'center' }}>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
                   <Mail size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
                   メールアドレス
@@ -504,12 +504,13 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
                   type="email"
                   value={loginData.email}
                   onChange={handleLoginChange}
-                  placeholder="business@example.com"
+                  placeholder="business@email.com"
                   required
+                  style={{ width: '12rem' }}
                 />
               </div>
 
-              <div>
+              <div style={{ textAlign: 'center' }}>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
                   <Lock size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
                   パスワード
@@ -520,17 +521,17 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
                     type={showPassword ? 'text' : 'password'}
                     value={loginData.password}
                     onChange={handleLoginChange}
-                    placeholder="パスワードを入力"
+                    placeholder="password"
                     required
-                    style={{ paddingRight: '2.5rem' }}
+                    style={{ paddingRight: '2.5rem', width: '12rem' }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     style={{
                       position: 'absolute',
-                      right: '0.75rem',
-                      top: '50%',
+                      right: '6rem',
+                      top: '60%',
                       transform: 'translateY(-50%)',
                       background: 'none',
                       border: 'none',
@@ -596,7 +597,7 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
           {/* 新規登録フォーム */}
           {activeTab === 'register' && (
             <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div>
+              <div style={{ textAlign: 'center' }}>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
                   <User size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
                   担当者名 <span style={{ color: '#ef4444' }}>*</span>
@@ -608,13 +609,14 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
                   onChange={handleRegisterChange}
                   placeholder="山田 太郎"
                   required
+                  style={{ width: '12rem' }}
                 />
                 <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
                   事業所の担当者名を入力してください
                 </p>
               </div>
 
-              <div>
+              <div style={{ textAlign: 'center' }}>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
                   <Mail size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
                   メールアドレス <span style={{ color: '#ef4444' }}>*</span>
@@ -624,12 +626,13 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
                   type="email"
                   value={registerData.email}
                   onChange={handleRegisterChange}
-                  placeholder="business@example.com"
+                  placeholder="business@email.com"
                   required
+                  style={{ width: '12rem' }}
                 />
               </div>
 
-              <div>
+              <div style={{ textAlign: 'center' }}>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
                   <Lock size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
                   パスワード <span style={{ color: '#ef4444' }}>*</span>
@@ -640,17 +643,17 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
                     type={showPassword ? 'text' : 'password'}
                     value={registerData.password}
                     onChange={handleRegisterChange}
-                    placeholder="6文字以上で入力"
+                    placeholder="password"
                     required
-                    style={{ paddingRight: '2.5rem' }}
+                    style={{ paddingRight: '2.5rem', width: '12rem' }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     style={{
                       position: 'absolute',
-                      right: '0.75rem',
-                      top: '50%',
+                      right: '6rem',
+                      top: '60%',
                       transform: 'translateY(-50%)',
                       background: 'none',
                       border: 'none',
@@ -732,21 +735,6 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
                 に同意したものとみなされます
               </div>
             </form>
-          )}
-
-          {/* 開発環境でのヒント */}
-          {process.env.NODE_ENV === 'development' && activeTab === 'login' && (
-            <div style={{ 
-              marginTop: '1rem', 
-              padding: '0.75rem', 
-              background: '#f0f9ff', 
-              borderRadius: '0.375rem', 
-              border: '1px solid #bae6fd' 
-            }}>
-              <p style={{ fontSize: '0.75rem', color: '#0369a1', margin: 0 }}>
-                開発環境: メール確認エラーが出る場合は、Supabaseで「Enable email confirmations」をOFFにしてください。
-              </p>
-            </div>
           )}
 
           {/* ゲストアクセス案内（ログインタブのみ） */}
