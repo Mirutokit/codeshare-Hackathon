@@ -517,7 +517,6 @@ const getAuthErrorMessage = (error: any): string => {
             </form>
           )}
 
-          // 新規登録フォーム（簡素化版）
 {activeTab === 'register' && (
   <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
     <div>
