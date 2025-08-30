@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { useAuthContext } from '@/components/providers/AuthProvider';
 import { useBookmarks } from '@/lib/hooks/useBookmarks';
 import { useDevice } from '@/hooks/useDevice';
+import { supabase } from '@/lib/supabase/client';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { MapPin, Phone, Globe, MessageCircle, Heart, ArrowLeft, Clock, Users, Star, Building, Calendar, ExternalLink, Send, X, Paperclip, Smile } from 'lucide-react';
@@ -352,13 +353,19 @@ const FacilityDetailPage: React.FC = () => {
   };
 
   // DM機能の処理
-  const handleDMClick = () => {
-    if (!isLoggedIn) {
+  const handleDMClick = async () => {
+    if (!isLoggedIn || !facility) {
       alert('DM機能を使用するにはログインが必要です。');
       return;
     }
-    // 実際の実装時はここでDMページへの遷移やモーダル表示を行う
-    alert('DM機能は開発中です。現在はお電話またはメールでお問い合わせください。');
+
+    try {
+      // 利用者マイページのメッセージタブに遷移
+      router.push(`/mypage?tab=messages&facility=${facility.id}`);
+    } catch (error) {
+      console.error('DM機能エラー:', error);
+      alert('メッセージ機能でエラーが発生しました。');
+    }
   };
 
   // ローディング状態
@@ -874,10 +881,7 @@ const FacilityDetailPage: React.FC = () => {
         </div>
       </main>
 
-      <Footer 
-        isLoggedIn={isLoggedIn}
-        signOut={signOut}
-      />
+      <Footer />
     </div>
   );
 };
