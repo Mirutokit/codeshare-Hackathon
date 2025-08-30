@@ -6,11 +6,14 @@ import Head from 'next/head'
 import { 
   Building2, User, Mail, Phone, MapPin, Globe, FileText,
   Eye, EyeOff, Save, Edit3, Settings, Lock, Award,
-  AlertCircle, CheckCircle, Image, Star, ArrowLeft
+  AlertCircle, CheckCircle, Image, Star, ArrowLeft, MessageCircle
 } from 'lucide-react'
 import { useAuthContext } from '@/components/providers/AuthProvider'
+import { useMessages } from '@/lib/hooks/useMessages'
 import { supabase } from '@/lib/supabase/client'
 import Header from '../../components/layout/Header'
+import ConversationList from '@/components/dm/ConversationList'
+import MessageThread from '@/components/dm/MessageThread'
 
 const TOKYO_DISTRICTS = [
   // 23区
@@ -769,12 +772,17 @@ const ServiceManagement: React.FC<{
 const FacilityMyPage: React.FC = () => {
   const router = useRouter()
   const { user, signOut } = useAuthContext()
+  const { conversations, fetchConversations, loading: messagesLoading } = useMessages()
   
-  const [activeTab, setActiveTab] = useState<'profile' | 'facility' | 'services' | 'account'>('profile')
+  const [activeTab, setActiveTab] = useState<'profile' | 'facility' | 'services' | 'account' | 'messages'>('profile')
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  
+  // DM関連の状態
+  const [selectedConversation, setSelectedConversation] = useState<any>(null)
+  const [showMessageThread, setShowMessageThread] = useState(false)
   
   const [profileData, setProfileData] = useState({
     // 担当者情報 (usersテーブル)
@@ -1034,7 +1042,8 @@ const FacilityMyPage: React.FC = () => {
     { key: 'profile', label: '担当者情報', icon: User },
     { key: 'facility', label: '事業所情報', icon: Building2 },
     { key: 'services', label: 'サービス管理', icon: Award },
-    { key: 'account', label: 'アカウント設定', icon: Settings }
+    { key: 'account', label: 'アカウント設定', icon: Settings },
+    { key: 'messages', label: 'メッセージ', icon: MessageCircle }
   ]
 
   // ログインチェック
@@ -1751,6 +1760,31 @@ const FacilityMyPage: React.FC = () => {
                   </MyPageButton>
                 </Link>
               </div>
+            </div>
+          )}
+
+          {/* メッセージタブ */}
+          {activeTab === 'messages' && (
+            <div>
+              {showMessageThread && selectedConversation ? (
+                <MessageThread
+                  conversation={selectedConversation}
+                  onClose={() => {
+                    setShowMessageThread(false)
+                    setSelectedConversation(null)
+                  }}
+                />
+              ) : (
+                <ConversationList
+                  conversations={conversations}
+                  onSelectConversation={(conversation) => {
+                    setSelectedConversation(conversation)
+                    setShowMessageThread(true)
+                  }}
+                  selectedConversationId={selectedConversation?.id}
+                  loading={messagesLoading}
+                />
+              )}
             </div>
           )}
         </div>
