@@ -516,8 +516,19 @@ const FacilityDetailPage: React.FC = () => {
           marginBottom: isMobile ? '1.5rem' : '2rem'
         }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {/* 画像セクション */}
-            <div style={{ height: isMobile ? '200px' : '300px', position: 'relative' }}>
+            {/* 画像セクション（クリック可能） */}
+            <div 
+              style={{ 
+                height: isMobile ? '200px' : '300px', 
+                position: 'relative',
+                cursor: facility.website_url ? 'pointer' : 'default'
+              }}
+              onClick={() => {
+                if (facility.website_url) {
+                  window.open(facility.website_url, '_blank', 'noopener,noreferrer');
+                }
+              }}
+            >
               {facility.image_url && !imageError ? (
                 <Image
                   src={facility.image_url}
@@ -546,6 +557,27 @@ const FacilityDetailPage: React.FC = () => {
                   }}>
                     {facility.name}
                   </p>
+                </div>
+              )}
+              
+              {/* クリック可能であることを示すオーバーレイ */}
+              {facility.website_url && (
+                <div style={{
+                  position: 'absolute',
+                  top: '1rem',
+                  right: '1rem',
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  color: 'white',
+                  padding: '0.5rem',
+                  borderRadius: '0.375rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  fontSize: '0.75rem',
+                  fontWeight: '500'
+                }}>
+                  <Globe size={12} />
+                  公式サイト
                 </div>
               )}
               
@@ -616,60 +648,45 @@ const FacilityDetailPage: React.FC = () => {
                   </p>
                 </div>
 
-                {/* 連絡先 */}
+                {/* 連絡先（公式サイトボタンを削除） */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {facility.website_url && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Globe size={isMobile ? 14 : 16} style={{ color: '#22c55e' }} />
-                      <a 
-                        href={facility.website_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        style={{ 
-                          color: '#2563eb', 
-                          textDecoration: 'none', 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: '0.25rem',
-                          fontSize: isMobile ? '0.875rem' : '1rem'
-                        }}
-                      >
-                        公式サイト
-                        <ExternalLink size={isMobile ? 10 : 12} />
-                      </a>
-                    </div>
-                  )}
+                  {/* 公式サイトボタンを削除（画像クリックで代替） */}
                 </div>
               </div>
 
               {/* アクションボタン（モバイル用） */}
               {isMobile && (
                 <div style={{
-                  marginTop: '0.25rem',
+                  marginTop: '1.25rem',
                   display: 'grid',
-                  gridTemplateColumns: facility.phone_number ? '1fr 1fr' : '1fr',
+                  gridTemplateColumns: facility.phone_number ? 
+                    (isLoggedIn ? '1fr 1fr' : '1fr') : 
+                    (isLoggedIn ? '1fr' : 'none'),
                   gap: '1rem'
                 }}>
-                  <button
-                    onClick={handleDMClick}
-                    style={{
-                      padding: '0.875rem',
-                      backgroundColor: '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '0.5rem',
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem'
-                    }}
-                  >
-                    <MessageCircle size={16} />
-                    メッセージ
-                  </button>
+                  {/* メッセージボタン：ログイン時のみ表示 */}
+                  {isLoggedIn && (
+                    <button
+                      onClick={handleDMClick}
+                      style={{
+                        padding: '0.875rem',
+                        backgroundColor: '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      <MessageCircle size={16} />
+                      メッセージ
+                    </button>
+                  )}
 
                   {facility.phone_number && (
                     <a
@@ -803,27 +820,30 @@ const FacilityDetailPage: React.FC = () => {
               {/* お問い合わせ情報 */}
               <InfoCard title="お問い合わせ" icon={<MessageCircle size={20} />}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <button
-                    onClick={handleDMClick}
-                    style={{
-                      padding: '0.875rem',
-                      backgroundColor: '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '0.5rem',
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem',
-                      width: '100%'
-                    }}
-                  >
-                    <MessageCircle size={16} />
-                    メッセージを送る
-                  </button>
+                  {/* メッセージボタン：ログイン時のみ表示 */}
+                  {isLoggedIn && (
+                    <button
+                      onClick={handleDMClick}
+                      style={{
+                        padding: '0.875rem',
+                        backgroundColor: '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        width: '100%'
+                      }}
+                    >
+                      <MessageCircle size={16} />
+                      メッセージを送る
+                    </button>
+                  )}
 
                   {facility.phone_number && (
                     <a
