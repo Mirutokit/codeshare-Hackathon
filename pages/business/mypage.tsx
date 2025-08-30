@@ -1,4 +1,4 @@
-// pages/business/mypage/index.tsx - 修正版
+// pages/business/mypage/index.tsx - 完全版
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
@@ -29,6 +29,63 @@ const TOKYO_DISTRICTS = [
   '八丈町', '青ヶ島村', '小笠原村'
 ]
 
+// 障害福祉サービスカテゴリ（完全版）
+const SERVICE_CATEGORIES = {
+  '訪問系サービス': [
+    { id: 1, name: '居宅介護', description: '自宅で入浴、排せつ、食事の介護などを行います' },
+    { id: 2, name: '重度訪問介護', description: '重度の肢体不自由者または重度の知的障害もしくは精神障害により行動上著しい困難を有する方に、自宅で入浴、排せつ、食事の介護、外出時における移動支援などを総合的に行います' },
+    { id: 3, name: '同行援護', description: '視覚障害により、移動に著しい困難を有する方に、移動時及びそれに伴う外出先において必要な視覚的情報の提供（代筆・代読を含む）、移動の援護等の便宜を供与します' },
+    { id: 4, name: '行動援護', description: '自己判断能力が制限されている方が行動する際に、危険を回避するために必要な支援、外出支援を行います' },
+    { id: 5, name: '重度障害者等包括支援', description: '介護の必要性がとても高い方に、居宅介護等複数のサービスを包括的に行います' }
+  ],
+  '日中活動系サービス': [
+    { id: 6, name: '療養介護', description: '医療と常時介護を必要とする方に、医療機関で機能訓練、療養上の管理、看護、介護及び日常生活の世話を行います' },
+    { id: 7, name: '生活介護', description: '常に介護を必要とする方に、昼間、入浴、排せつ、食事の介護等を行うとともに、創作的活動又は生産活動の機会を提供します' },
+    { id: 8, name: '短期入所', description: '自宅で介護する方が病気の場合などに、短期間、夜間も含め施設で入浴、排せつ、食事の介護等を行います' }
+  ],
+  '居住系サービス': [
+    { id: 10, name: '共同生活援助', description: '夜間や休日、共同生活を行う住居で、相談や日常生活上の援助を行います' },
+    { id: 11, name: '自立生活援助', description: '一人暮らしに必要な理解力・生活力等を補うため、定期的な居宅訪問や随時の対応により日常生活における課題を把握し、必要な支援を行います' }
+  ],
+  '施設系サービス': [
+    { id: 9, name: '施設入所支援', description: '施設に入所する方に、夜間や休日、入浴、排せつ、食事の介護等を行います' }
+  ],
+  '訓練系・就労系サービス': [
+    { id: 12, name: '自立訓練(機能訓練)', description: '自立した日常生活又は社会生活ができるよう、一定期間、身体機能又は生活能力の向上のために必要な訓練を行います' },
+    { id: 13, name: '自立訓練(生活訓練)', description: '自立した日常生活又は社会生活ができるよう、一定期間、生活能力の向上のために必要な訓練を行います' },
+    { id: 14, name: '宿泊型自立訓練', description: '夜間も含め施設において、機能訓練、生活訓練等を実施するとともに、地域移行に向けた関係機関との連絡調整等を行います' },
+    { id: 15, name: '就労移行支援', description: '一般企業等への就労を希望する方に、一定期間、就労に必要な知識及び能力の向上のために必要な訓練を行います' },
+    { id: 16, name: '就労継続支援Ａ型', description: '一般企業等での就労が困難な方に、雇用契約を結び、生産活動その他の活動の機会を提供するとともに、その他の就労に必要な知識及び能力の向上のために必要な訓練を行います' },
+    { id: 17, name: '就労継続支援Ｂ型', description: '一般企業等での就労が困難な方に、雇用契約を結ばず、生産活動その他の活動の機会を提供するとともに、その他の就労に必要な知識及び能力の向上のために必要な訓練を行います' },
+    { id: 18, name: '就労定着支援', description: '生活介護、自立訓練、就労移行支援又は就労継続支援を利用して、通常の事業所に新たに雇用された方の就労の継続を図るため、企業、障害福祉サービス事業者、医療機関等との連絡調整を行うとともに、雇用に伴い生じる日常生活又は社会生活を営む上での各般の問題に関する相談、指導及び助言等の必要な支援を行います' }
+  ],
+  '障害児通所系サービス': [
+    { id: 19, name: '児童発達支援', description: '未就学の障害のある子どもが主に通い、支援を受けるための施設です。日常生活の自立支援や機能訓練を行ったり、保育園や幼稚園のように遊びや学びの場を提供したりします' },
+    { id: 20, name: '医療型児童発達支援', description: '未就学の障害のある子どもが主に通い、児童発達支援及び治療を行います' },
+    { id: 21, name: '放課後等デイサービス', description: '就学中の障害のある子どもが、放課後や夏休み等の長期休暇中において、生活能力向上のための訓練等を継続的に提供することにより、学校教育と相まって障害のある子どもの自立を促進するとともに、放課後等の居場所づくりを行います' },
+    { id: 22, name: '居宅訪問型児童発達支援', description: '重度の障害等の状態にある障害児であって、児童発達支援等の通所支援を利用するために外出することが著しく困難な障害児に発達支援を提供します' },
+    { id: 23, name: '保育所等訪問支援', description: '障害児以外の児童との集団生活への適応のための専門的な支援その他の便宜を供与します' }
+  ],
+  '障害児入所系サービス': [
+    { id: 24, name: '福祉型障害児入所施設', description: '障害のある子どもを入所させて、保護、日常生活の指導及び知識技能の付与を行います' },
+    { id: 25, name: '医療型障害児入所施設', description: '障害のある子どもを入所させて、保護、日常生活の指導及び知識技能の付与並びに治療を行います' }
+  ],
+  '相談系サービス': [
+    { id: 26, name: '地域相談支援(地域移行)', description: '障害者支援施設等に入所している障害者又は精神科病院に入院している精神障害者等に対し、住居の確保その他の地域における生活に移行するための活動に関する相談その他の便宜を供与します' },
+    { id: 27, name: '地域相談支援(地域定着)', description: '居宅において単身等で生活する障害者に対し、常時の連絡体制を確保し、障害の特性に起因して生じた緊急の事態等に相談その他の便宜を供与します' },
+    { id: 28, name: '計画相談支援', description: '障害福祉サービス等の利用計画の作成やモニタリング等を行います' },
+    { id: 29, name: '障害児相談支援', description: '障害児通所支援等の利用計画の作成やモニタリング等を行います' }
+  ]
+}
+
+// 利用可能状況の定義（データベースの列挙型に正確に対応）
+const AVAILABILITY_STATUS = {
+  'available': { label: '受け入れ可能', color: '#22c55e', bgColor: '#f0fdf4' },
+  'unavailable': { label: '受け入れ不可', color: '#ef4444', bgColor: '#fef2f2' }
+} as const
+
+type AvailabilityStatus = keyof typeof AVAILABILITY_STATUS
+
 // 共通入力コンポーネント
 const MyPageInput: React.FC<{
   name: string
@@ -40,7 +97,8 @@ const MyPageInput: React.FC<{
   disabled?: boolean
   min?: string
   max?: string
-}> = ({ name, type = 'text', value, onChange, placeholder, required, disabled, min, max }) => {
+  style?: React.CSSProperties
+}> = ({ name, type = 'text', value, onChange, placeholder, required, disabled, min, max, style }) => {
   return (
     <input
       name={name}
@@ -61,7 +119,8 @@ const MyPageInput: React.FC<{
         outline: 'none',
         transition: 'all 0.2s',
         backgroundColor: disabled ? '#f9fafb' : 'white',
-        color: disabled ? '#6b7280' : '#111827'
+        color: disabled ? '#6b7280' : '#111827',
+        ...style
       }}
       onFocus={(e) => {
         if (!disabled) {
@@ -133,6 +192,576 @@ const MyPageButton: React.FC<{
     >
       {loading ? '処理中...' : children}
     </button>
+  )
+}
+
+// サービス管理コンポーネント
+const ServiceManagement: React.FC<{
+  facilityId: string
+  isProfileComplete: boolean
+  setMessage: (message: { type: 'success' | 'error'; text: string } | null) => void
+  setActiveTab: (tab: 'profile' | 'facility' | 'services' | 'account') => void
+}> = ({ facilityId, isProfileComplete, setMessage, setActiveTab }) => {
+  const [services, setServices] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [isEditing, setIsEditing] = useState(false)
+  const [selectedServices, setSelectedServices] = useState<Set<number>>(new Set())
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
+  const [serviceDetails, setServiceDetails] = useState<Record<number, {
+    availability: AvailabilityStatus
+    capacity: number | null
+    current_users: number
+  }>>({})
+
+  // サービス情報を読み込み
+  useEffect(() => {
+    const loadServices = async () => {
+      if (!facilityId) return
+
+      setInitialLoading(true)
+      try {
+        const { data, error } = await supabase
+          .from('facility_services')
+          .select('*')
+          .eq('facility_id', facilityId)
+
+        if (error) {
+          console.error('サービス情報取得エラー:', error)
+          throw error
+        }
+
+        setServices(data || [])
+        setSelectedServices(new Set(data?.map(s => s.service_id) || []))
+        
+        // サービス詳細情報を設定
+        const details: Record<number, any> = {}
+        data?.forEach(service => {
+          details[service.service_id] = {
+            availability: service.availability || 'unavailable',
+            capacity: service.capacity,
+            current_users: service.current_users || 0
+          }
+        })
+        setServiceDetails(details)
+
+      } catch (error: any) {
+        console.error('サービス読み込みエラー:', error)
+        setMessage({ 
+          type: 'error', 
+          text: `サービス情報の読み込みに失敗しました: ${error.message}` 
+        })
+      } finally {
+        setInitialLoading(false)
+      }
+    }
+
+    loadServices()
+  }, [facilityId, setMessage])
+
+  // サービス選択の切り替え
+  const toggleService = (serviceId: number) => {
+    const newSelected = new Set(selectedServices)
+    if (newSelected.has(serviceId)) {
+      newSelected.delete(serviceId)
+      // サービス詳細も削除
+      const newDetails = { ...serviceDetails }
+      delete newDetails[serviceId]
+      setServiceDetails(newDetails)
+    } else {
+      newSelected.add(serviceId)
+      // デフォルトの詳細情報を追加
+      setServiceDetails(prev => ({
+        ...prev,
+        [serviceId]: {
+          availability: 'unavailable',
+          capacity: null,
+          current_users: 0
+        }
+      }))
+    }
+    setSelectedServices(newSelected)
+  }
+
+  // サービス詳細の更新
+  const updateServiceDetail = (serviceId: number, field: string, value: any) => {
+    setServiceDetails(prev => ({
+      ...prev,
+      [serviceId]: {
+        ...prev[serviceId],
+        [field]: value
+      }
+    }))
+  }
+
+  // カテゴリの展開切り替え
+  const toggleCategory = (categoryName: string) => {
+    setExpandedCategory(expandedCategory === categoryName ? null : categoryName)
+  }
+
+  // サービス情報の保存
+  const handleSaveServices = async () => {
+    if (!facilityId) return
+
+    setLoading(true)
+    try {
+      console.log('=== サービス情報保存開始 ===')
+      console.log('Facility ID:', facilityId)
+      console.log('Selected Services:', Array.from(selectedServices))
+      
+      // 既存のサービスを削除
+      const { error: deleteError } = await supabase
+        .from('facility_services')
+        .delete()
+        .eq('facility_id', facilityId)
+
+      if (deleteError) {
+        console.error('サービス削除エラー:', deleteError)
+        throw new Error(`既存サービスの削除に失敗しました: ${deleteError.message}`)
+      }
+
+      // 選択されたサービスを挿入
+      if (selectedServices.size > 0) {
+        const servicesToInsert = Array.from(selectedServices).map(serviceId => {
+          const details = serviceDetails[serviceId] || {
+            availability: 'unavailable',
+            capacity: null,
+            current_users: 0
+          }
+          
+          return {
+            facility_id: parseInt(facilityId),
+            service_id: serviceId,
+            availability: details.availability,
+            capacity: details.capacity,
+            current_users: details.current_users,
+            updated_at: new Date().toISOString()
+          }
+        })
+
+        console.log('挿入するサービスデータ:', servicesToInsert)
+
+        const { error: insertError } = await supabase
+          .from('facility_services')
+          .insert(servicesToInsert)
+
+        if (insertError) {
+          console.error('サービス挿入エラー:', insertError)
+          throw new Error(`サービス情報の保存に失敗しました: ${insertError.message}`)
+        }
+      }
+
+      setMessage({ type: 'success', text: 'サービス情報を更新しました' })
+      setIsEditing(false)
+      
+      // データを再読み込み
+      const { data } = await supabase
+        .from('facility_services')
+        .select('*')
+        .eq('facility_id', facilityId)
+      
+      setServices(data || [])
+      console.log('サービス更新完了')
+
+    } catch (error: any) {
+      console.error('サービス保存エラー:', error)
+      setMessage({ 
+        type: 'error', 
+        text: error.message || 'サービス情報の保存に失敗しました' 
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 編集キャンセル
+  const handleCancelEdit = () => {
+    setSelectedServices(new Set(services.map(s => s.service_id)))
+    setExpandedCategory(null)
+    
+    // サービス詳細を元に戻す
+    const details: Record<number, any> = {}
+    services.forEach(service => {
+      details[service.service_id] = {
+        availability: service.availability || 'unavailable',
+        capacity: service.capacity,
+        current_users: service.current_users || 0
+      }
+    })
+    setServiceDetails(details)
+    setIsEditing(false)
+  }
+
+  if (initialLoading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '2rem' }}>
+        <div style={{ 
+          width: '32px', 
+          height: '32px', 
+          border: '3px solid #e5e7eb', 
+          borderTop: '3px solid #22c55e',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          margin: '0 auto 1rem'
+        }}></div>
+        <p>サービス情報を読み込み中...</p>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#111827', margin: 0 }}>
+          <Award size={20} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
+          サービス管理
+        </h3>
+        
+        {isProfileComplete ? (
+          <MyPageButton
+            variant={isEditing ? "secondary" : "primary"}
+            onClick={() => isEditing ? handleCancelEdit() : setIsEditing(true)}
+            disabled={loading}
+          >
+            <Edit3 size={16} />
+            {isEditing ? '編集をキャンセル' : '編集する'}
+          </MyPageButton>
+        ) : (
+          <div style={{ 
+            padding: '0.5rem 1rem',
+            background: '#fef3c7',
+            border: '1px solid #fbbf24',
+            borderRadius: '0.5rem',
+            fontSize: '0.875rem',
+            color: '#92400e'
+          }}>
+            事業所情報を完了してください
+          </div>
+        )}
+      </div>
+
+      {!isProfileComplete ? (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '3rem',
+          background: '#fefbf0',
+          borderRadius: '0.5rem',
+          border: '1px solid #fbbf24'
+        }}>
+          <AlertCircle size={48} style={{ color: '#f59e0b', marginBottom: '1rem' }} />
+          <h4 style={{ color: '#92400e', marginBottom: '0.5rem' }}>
+            サービス管理を利用するには
+          </h4>
+          <p style={{ color: '#92400e', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+            まず事業所の基本情報を完了させる必要があります
+          </p>
+          <MyPageButton 
+            variant="primary" 
+            onClick={() => setActiveTab('facility')}
+          >
+            事業所情報を完了する
+          </MyPageButton>
+        </div>
+      ) : (
+        <div>
+          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '2rem' }}>
+            提供可能な障害福祉サービスを選択し、受入状況や定員を設定してください。
+          </p>
+
+          {isEditing ? (
+            // 編集モード：アコーディオン形式でサービス選択
+            <div style={{ marginBottom: '2rem' }}>
+              {Object.entries(SERVICE_CATEGORIES).map(([categoryName, categoryServices]) => (
+                <div key={categoryName} style={{ marginBottom: '1rem' }}>
+                  <button
+                    onClick={() => toggleCategory(categoryName)}
+                    style={{
+                      width: '100%',
+                      padding: '1rem',
+                      background: expandedCategory === categoryName ? '#f0fdf4' : '#f9fafb',
+                      border: expandedCategory === categoryName ? '2px solid #22c55e' : '1px solid #e5e7eb',
+                      borderRadius: '0.5rem',
+                      fontSize: '1rem',
+                      fontWeight: 600,
+                      color: expandedCategory === categoryName ? '#166534' : '#374151',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <span>{categoryName}</span>
+                    <span style={{ 
+                      transform: expandedCategory === categoryName ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s'
+                    }}>
+                      ▼
+                    </span>
+                  </button>
+
+                  {expandedCategory === categoryName && (
+                    <div style={{ 
+                      marginTop: '0.5rem',
+                      padding: '1rem',
+                      background: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '0.5rem'
+                    }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {categoryServices.map(service => (
+                          <div
+                            key={service.id}
+                            style={{
+                              padding: '1rem',
+                              border: selectedServices.has(service.id) 
+                                ? '1px solid #22c55e' 
+                                : '1px solid #e5e7eb',
+                              borderRadius: '0.5rem',
+                              background: selectedServices.has(service.id) 
+                                ? '#f0fdf4' 
+                                : '#f9fafb'
+                            }}
+                          >
+                            {/* サービス基本情報 */}
+                            <div 
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => toggleService(service.id)}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedServices.has(service.id)}
+                                  onChange={() => toggleService(service.id)}
+                                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                />
+                                <h5 style={{ 
+                                  fontSize: '0.875rem', 
+                                  fontWeight: 600, 
+                                  color: selectedServices.has(service.id) ? '#166534' : '#374151',
+                                  margin: 0 
+                                }}>
+                                  {service.name}
+                                </h5>
+                              </div>
+                              <p style={{ 
+                                fontSize: '0.75rem', 
+                                color: selectedServices.has(service.id) ? '#166534' : '#6b7280',
+                                margin: 0,
+                                lineHeight: '1.4',
+                                paddingLeft: '1.5rem',
+                                marginBottom: selectedServices.has(service.id) ? '1rem' : 0
+                              }}>
+                                {service.description}
+                              </p>
+                            </div>
+
+                            {/* サービス詳細設定 */}
+                            {selectedServices.has(service.id) && (
+                              <div style={{ 
+                                paddingLeft: '1.5rem', 
+                                borderTop: '1px solid #e5e7eb', 
+                                paddingTop: '1rem' 
+                              }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
+                                  
+                                  {/* 受入状況 */}
+                                  <div>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, color: '#374151', marginBottom: '0.25rem' }}>
+                                      受入状況
+                                    </label>
+                                    <select
+                                      value={serviceDetails[service.id]?.availability || 'unavailable'}
+                                      onChange={(e) => updateServiceDetail(service.id, 'availability', e.target.value as AvailabilityStatus)}
+                                      style={{
+                                        width: '100%',
+                                        padding: '0.5rem',
+                                        fontSize: '0.75rem',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '0.375rem',
+                                        background: 'white'
+                                      }}
+                                    >
+                                      {Object.entries(AVAILABILITY_STATUS).map(([value, { label }]) => (
+                                        <option key={value} value={value}>{label}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  {/* 定員 */}
+                                  <div>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, color: '#374151', marginBottom: '0.25rem' }}>
+                                      定員（任意）
+                                    </label>
+                                    <MyPageInput
+                                      name={`capacity_${service.id}`}
+                                      type="number"
+                                      value={serviceDetails[service.id]?.capacity?.toString() || ''}
+                                      onChange={(e) => updateServiceDetail(service.id, 'capacity', e.target.value ? parseInt(e.target.value) : null)}
+                                      placeholder="人数"
+                                      min="0"
+                                      style={{ fontSize: '0.75rem', padding: '0.5rem' }}
+                                    />
+                                  </div>
+
+                                  {/* 現在の利用者数 */}
+                                  <div>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, color: '#374151', marginBottom: '0.25rem' }}>
+                                      現在利用者数
+                                    </label>
+                                    <MyPageInput
+                                      name={`current_users_${service.id}`}
+                                      type="number"
+                                      value={serviceDetails[service.id]?.current_users?.toString() || '0'}
+                                      onChange={(e) => updateServiceDetail(service.id, 'current_users', parseInt(e.target.value) || 0)}
+                                      placeholder="0"
+                                      min="0"
+                                      style={{ fontSize: '0.75rem', padding: '0.5rem' }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            // 表示モード：選択されたサービスの表示
+            selectedServices.size > 0 ? (
+              <div style={{ marginBottom: '2rem' }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: 600, color: '#374151', marginBottom: '1rem' }}>
+                  現在提供中のサービス ({selectedServices.size}件)
+                </h4>
+                
+                {Object.entries(SERVICE_CATEGORIES).map(([categoryName, categoryServices]) => {
+                  const categorySelectedServices = categoryServices.filter(service => selectedServices.has(service.id))
+                  
+                  if (categorySelectedServices.length === 0) return null
+
+                  return (
+                    <div key={categoryName} style={{ marginBottom: '2rem' }}>
+                      <h5 style={{ 
+                        fontSize: '0.875rem', 
+                        fontWeight: 600, 
+                        color: '#6b7280',
+                        marginBottom: '1rem',
+                        paddingBottom: '0.5rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>
+                        {categoryName}
+                      </h5>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {categorySelectedServices.map(service => {
+                          const details = serviceDetails[service.id]
+                          const availability = details?.availability || 'unavailable'
+                          const statusInfo = AVAILABILITY_STATUS[availability]
+                          
+                          return (
+                            <div 
+                              key={service.id}
+                              style={{
+                                padding: '1rem',
+                                background: 'white',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '0.5rem',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                              }}
+                            >
+                              <div>
+                                <h6 style={{ 
+                                  fontSize: '0.875rem', 
+                                  fontWeight: 600, 
+                                  color: '#374151',
+                                  margin: '0 0 0.25rem 0'
+                                }}>
+                                  {service.name}
+                                </h6>
+                                <p style={{ 
+                                  fontSize: '0.75rem', 
+                                  color: '#6b7280',
+                                  margin: 0,
+                                  lineHeight: '1.4',
+                                  maxWidth: '600px'
+                                }}>
+                                  {service.description}
+                                </p>
+                              </div>
+                              
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                {/* 利用状況 */}
+                                {details?.capacity && (
+                                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                    {details.current_users}/{details.capacity}人
+                                  </div>
+                                )}
+                                
+                                {/* ステータス */}
+                                <div style={{
+                                  padding: '0.25rem 0.75rem',
+                                  background: statusInfo.bgColor,
+                                  color: statusInfo.color,
+                                  borderRadius: '9999px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 500,
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  {statusInfo.label}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '2rem',
+                background: '#f9fafb',
+                borderRadius: '0.5rem',
+                border: '1px solid #e5e7eb'
+              }}>
+                <Award size={32} style={{ color: '#d1d5db', marginBottom: '1rem' }} />
+                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+                  まだサービスが登録されていません。<br />
+                  「編集する」ボタンから提供可能なサービスを選択してください。
+                </p>
+              </div>
+            )
+          )}
+
+          {isEditing && (
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-start' }}>
+              <MyPageButton 
+                variant="primary" 
+                onClick={handleSaveServices}
+                loading={loading}
+              >
+                <Save size={16} />
+                {loading ? '保存中...' : 'サービス情報を保存'}
+              </MyPageButton>
+              <MyPageButton 
+                variant="secondary" 
+                onClick={handleCancelEdit}
+                disabled={loading}
+              >
+                キャンセル
+              </MyPageButton>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -953,31 +1582,12 @@ const FacilityMyPage: React.FC = () => {
 
           {/* サービス管理タブ */}
           {activeTab === 'services' && (
-            <div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#111827', marginBottom: '1.5rem' }}>
-                <Award size={20} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
-                サービス管理
-              </h3>
-              
-              <div style={{ 
-                textAlign: 'center', 
-                padding: '3rem',
-                background: '#f9fafb',
-                borderRadius: '0.5rem',
-                border: '1px solid #e5e7eb'
-              }}>
-                <Award size={48} style={{ color: '#d1d5db', marginBottom: '1rem' }} />
-                <h4 style={{ color: '#6b7280', marginBottom: '0.5rem' }}>
-                  サービス管理機能は準備中です
-                </h4>
-                <p style={{ color: '#9ca3af', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-                  提供可能なサービスの登録・管理機能を開発中です
-                </p>
-                <MyPageButton variant="secondary" disabled>
-                  近日実装予定
-                </MyPageButton>
-              </div>
-            </div>
+            <ServiceManagement 
+              facilityId={profileData.facility_id}
+              isProfileComplete={profileData.is_profile_complete}
+              setMessage={setMessage}
+              setActiveTab={setActiveTab}
+            />
           )}
 
           {/* アカウント設定タブ */}
