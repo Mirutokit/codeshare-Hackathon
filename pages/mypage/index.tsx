@@ -11,9 +11,12 @@ import {
 } from 'lucide-react'
 import { useAuthContext } from '@/components/providers/AuthProvider'
 import { useBookmarks } from '@/lib/hooks/useBookmarks'
+import { useMessages } from '@/lib/hooks/useMessages'
 import { supabase } from '@/lib/supabase/client'
 import { TokyoDistrict, DisabilityType } from '@/types/database'
-import Header from '../../components/layout/Header';
+import Header from '../../components/layout/Header'
+import ConversationList from '@/components/dm/ConversationList'
+import MessageThread from '@/components/dm/MessageThread'
 
 const TOKYO_DISTRICTS: TokyoDistrict[] = [
   // 23区
@@ -149,12 +152,17 @@ const UserMyPage: React.FC = () => {
   const router = useRouter()
   const { user, signOut } = useAuthContext()
   const { bookmarks, refreshBookmarks, toggleBookmark, isBookmarked } = useBookmarks()
+  const { conversations, fetchConversations, getOrCreateConversation, loading: messagesLoading } = useMessages()
   
-  const [activeTab, setActiveTab] = useState<'profile' | 'personal' | 'support' | 'account' | 'bookmarks'>('profile')
+  const [activeTab, setActiveTab] = useState<'profile' | 'personal' | 'support' | 'account' | 'bookmarks' | 'messages'>('profile')
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  
+  // DM関連の状態
+  const [selectedConversation, setSelectedConversation] = useState<any>(null)
+  const [showMessageThread, setShowMessageThread] = useState(false)
   
   const [profileData, setProfileData] = useState({
     // 基本情報 (usersテーブル)
@@ -195,7 +203,7 @@ const UserMyPage: React.FC = () => {
 
   const [bookmarkedFacilities, setBookmarkedFacilities] = useState<any[]>([])
 
-  // 修正された初期データ読み込み処理
+  // 初期データ読み込み
   useEffect(() => {
     const loadUserData = async () => {
       if (!user) return
@@ -351,6 +359,38 @@ const UserMyPage: React.FC = () => {
 
     loadUserData()
   }, [user])
+
+  // DM起動処理（URLパラメータから）
+  useEffect(() => {
+    const { tab, facility } = router.query
+    
+    if (tab === 'messages' && facility && user) {
+      setActiveTab('messages')
+      setShowMessageThread(false) // 最初は一覧を表示
+      
+      // 事業所との会話を作成または取得
+      const handleFacilityMessage = async () => {
+        try {
+          const facilityId = Array.isArray(facility) ? facility[0] : facility
+          
+          // 会話を作成または取得
+          const conversationId = await getOrCreateConversation(
+            user.id, 
+            parseInt(facilityId)
+          )
+          
+          if (conversationId) {
+            // 会話一覧を更新
+            await fetchConversations()
+          }
+        } catch (error) {
+          console.error('会話作成エラー:', error)
+        }
+      }
+      
+      handleFacilityMessage()
+    }
+  }, [router.query, user, getOrCreateConversation, fetchConversations])
 
   // ブックマーク読み込み
   useEffect(() => {
@@ -765,7 +805,8 @@ const UserMyPage: React.FC = () => {
     { key: 'personal', label: '個人情報', icon: Heart },
     { key: 'support', label: 'サポート情報', icon: Shield },
     { key: 'account', label: 'アカウント設定', icon: Settings },
-    { key: 'bookmarks', label: 'ブックマーク', icon: Star }
+    { key: 'bookmarks', label: 'ブックマーク', icon: Star },
+    { key: 'messages', label: 'メッセージ', icon: MessageCircle }
   ]
 
   // ログインチェック
@@ -1534,6 +1575,31 @@ const UserMyPage: React.FC = () => {
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* メッセージタブ */}
+          {activeTab === 'messages' && (
+            <div>
+              {showMessageThread && selectedConversation ? (
+                <MessageThread
+                  conversation={selectedConversation}
+                  onClose={() => {
+                    setShowMessageThread(false)
+                    setSelectedConversation(null)
+                  }}
+                />
+              ) : (
+                <ConversationList
+                  conversations={conversations}
+                  onSelectConversation={(conversation) => {
+                    setSelectedConversation(conversation)
+                    setShowMessageThread(true)
+                  }}
+                  selectedConversationId={selectedConversation?.id}
+                  loading={messagesLoading}
+                />
               )}
             </div>
           )}
