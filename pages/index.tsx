@@ -10,6 +10,7 @@ import { getUserBookmarks } from '@/lib/supabase/bookmarks';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import { useDevice } from '../hooks/useDevice';
+import { Bold } from 'lucide-react';
 
 // 地図コンポーネントを動的インポート（SSR対応）
 const MapView = dynamic(() => import('../components/search/MapView'), {
@@ -1063,6 +1064,9 @@ const SearchResults: React.FC<{
   onBookmarkToggle: (facilityId: number) => void;
   isBookmarked: (facilityId: number) => boolean;
   searchParams?: string;
+  isFirstVisit: boolean;
+  handleCloseOverlay: () => void;
+  isFirstVisitContinue: boolean;
 }> = ({ 
   facilities, 
   pagination, 
@@ -1075,7 +1079,10 @@ const SearchResults: React.FC<{
   isLoggedIn,
   onBookmarkToggle,
   isBookmarked,
-  searchParams = ''
+  searchParams = '',
+  isFirstVisit,
+  handleCloseOverlay,
+  isFirstVisitContinue
 }) => {
   const router = useRouter();
   
@@ -1152,8 +1159,95 @@ const SearchResults: React.FC<{
           justifyContent: 'space-between', 
           alignItems: 'center', 
           flexWrap: 'wrap', 
-          gap: '1rem' 
+          gap: '1rem',
+          position: 'relative',
+          zIndex: (isFirstVisit && isFirstVisitContinue) ? 3000 : 'auto'
         }}>
+
+        {/* 表示切替のチュートリアル吹き出し */}
+        {isFirstVisit && isFirstVisitContinue && (
+            <div
+            style={{
+                position: "absolute",
+                bottom: "100%", // 対象要素の上に表示
+                left: "50%",
+                transform: "translateX(-50%)",
+                marginBottom: "0.75rem",
+                background: "#ffffff",
+                border: "1px solid #e5e7eb",
+                borderRadius: "0.5rem",
+                padding: "1rem 1.5rem",
+                whiteSpace: "nowrap",
+                zIndex: 4000,
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
+            }}
+            >
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                
+                {/* 案内テキスト */}
+                <p style={{ margin: 0, fontSize: '1rem', color: '#374151', fontWeight: 'bold' }}>
+                リストと地図を切り替えることができます
+                </p>
+
+                {/* 終了ボタン */}
+                <button
+                onClick={handleCloseOverlay}
+                className="tutorial-button-primary"
+                style={{
+                    background: '#22c55e',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    padding: '0.5rem 1.25rem',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s'
+                }}
+                >
+                チュートリアルを終了
+                </button>
+            </div>
+
+            {/* 吹き出しの矢印（下向き） */}
+            {/* 枠線用の矢印 */}
+            <div
+                style={{
+                position: "absolute",
+                top: "100%",
+                left: "50%",
+                transform: "translateX(-50%)",
+                marginTop: '1px',
+                width: 0,
+                height: 0,
+                borderLeft: "8px solid transparent",
+                borderRight: "8px solid transparent",
+                borderTop: "8px solid #e5e7eb",
+                }}
+            />
+            {/* 本体用の矢印 */}
+            <div
+                style={{
+                position: "absolute",
+                top: "100%",
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: 0,
+                height: 0,
+                borderLeft: "8px solid transparent",
+                borderRight: "8px solid transparent",
+                borderTop: "8px solid #ffffff",
+                }}
+            />
+            {/* ボタンのホバー効果 */}
+            <style jsx global>{`
+                .tutorial-button-primary:hover {
+                background-color: #16a34a !important;
+                }
+            `}</style>
+            </div>
+        )}
+
           <div className="results-title-container">
             <h2 className="results-title" style={{ margin: 0 }}>
               {isBookmarkMode ? 'ブックマーク' : '検索結果'} ({pagination?.total || facilities.length}件)
@@ -1266,6 +1360,8 @@ const HomePage: React.FC = () => {
   const [searchParamsString, setSearchParamsString] = useState('');
   const [preservedSearchParams, setPreservedSearchParams] = useState(''); // 検索状態を保持
   const [isRestoringBookmarks, setIsRestoringBookmarks] = useState(false); // 重複実行防止用
+  const [isFirstVisit, setIsFirstVisit] = useState(false); // 初回アクセス管理用
+  const [isFirstVisitContinue, setIsFirstVisitContinue] = useState(false); // 初回アクセス管理用
 
   const isLoggedIn = !!user;
 
@@ -1600,6 +1696,39 @@ const HomePage: React.FC = () => {
     }
   };
 
+
+  // 初回アクセス判定用キー
+  const FIRST_VISIT_KEY = 'isFirstVisit';
+
+  // 初回アクセス時のみ実行し、オーバーレイ表示を制御
+  useEffect(() => {
+    try {
+      // localStorageが使える環境か確認（SSR対策）
+      if (typeof window !== 'undefined' && !localStorage.getItem(FIRST_VISIT_KEY)) {
+        console.log('🎉 初回アクセスです！');
+        setIsFirstVisit(true); // オーバーレイ表示のトリガー
+        localStorage.setItem(FIRST_VISIT_KEY, '1');
+      }
+    } catch (error) {
+      console.error('初回アクセス判定エラー:', error);
+    }
+  }, []);
+
+  const firstVisitContinue = () => {
+    setIsFirstVisitContinue(true);
+  };
+
+  // オーバーレイを閉じるためのハンドラ
+  const handleCloseOverlay = () => {
+    setIsFirstVisit(false);
+    // try {
+    //   // オーバーレイを閉じたタイミングでフラグを保存
+    //   localStorage.setItem(FIRST_VISIT_KEY, '1');
+    // } catch (error) {
+    //   console.error('localStorageへの保存エラー:', error);
+    // }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Head>
@@ -1609,6 +1738,141 @@ const HomePage: React.FC = () => {
           content="東京都の障害福祉サービス事業所を検索して、適切なケアサービスを見つけましょう。" 
         />
       </Head>
+
+      {/* 初回アクセス時のオーバーレイ表示 */}
+      {isFirstVisit && (
+        <div
+          /*onClick={handleCloseOverlay}*/
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            zIndex: 2000,
+            cursor: 'pointer',
+          }}
+        >
+        </div>
+      )}
+
+      {/* 初回アクセス時のチュートリアル開始モーダル */}
+      {isFirstVisit && !isFirstVisitContinue && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            backgroundColor: "transparent",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+            backdropFilter: 'blur(4px)'
+          }}
+        >
+          <div
+            style={{
+              background: "white",
+              borderRadius: "0.75rem",
+              padding: "2rem",
+              maxWidth: "500px",
+              width: "90%",
+              textAlign: "center",
+              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+              border: '1px solid #e5e7eb',
+              animation: 'fadeInModal 0.3s ease-out forwards'
+            }}
+          >
+            <h2 style={{
+              marginTop: 0,
+              fontSize: '1.5rem',
+              fontWeight: 600,
+              color: '#111827',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.75rem'
+            }}>
+              <span>💡</span>
+              <div>
+                <span style={{display: 'inline-block'}}>ケアコネクトへ</span><span style={{display: 'inline-block'}}>ようこそ！</span>
+              </div>
+            </h2>
+            <p style={{
+              color: '#4b5563',
+              lineHeight: 1.6,
+              fontSize: '1rem',
+              marginTop: '1rem',
+              marginBottom: '2.5rem'
+            }}>
+              <span style={{display: 'inline-block'}}>簡単なチュートリアルで、</span><span style={{display: 'inline-block'}}>使い方をご紹介します。</span>
+            </p>
+
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem'
+            }}>
+              <button
+                onClick={firstVisitContinue}
+                className="tutorial-button-primary"
+                style={{
+                  padding: "0.75rem 1.5rem",
+                  border: "none",
+                  borderRadius: "0.5rem",
+                  backgroundColor: "#22c55e",
+                  color: "white",
+                  cursor: "pointer",
+                  fontWeight: 500,
+                  fontSize: '1rem',
+                  transition: 'background-color 0.2s'
+                }}
+              >
+                チュートリアルを開始
+              </button>
+
+              <button
+                onClick={handleCloseOverlay}
+                className="tutorial-button-secondary"
+                style={{
+                  padding: "0.5rem 1rem",
+                  border: "none",
+                  backgroundColor: "transparent",
+                  color: "#6b7280",
+                  cursor: "pointer",
+                  fontSize: '0.875rem',
+                  transition: 'color 0.2s',
+                  marginTop: '0.5rem'
+                }}
+              >
+                スキップする
+              </button>
+            </div>
+          </div>
+          <style jsx global>{`
+            .tutorial-button-primary:hover {
+              background-color: #16a34a !important;
+            }
+            .tutorial-button-secondary:hover {
+              color: #111827 !important;
+            }
+            @keyframes fadeInModal {
+              from {
+                opacity: 0;
+                transform: translateY(-20px);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+          `}</style>
+        </div>
+      )}
 
       {/* ヘッダー */}
       <Header 
@@ -1782,13 +2046,19 @@ const HomePage: React.FC = () => {
           </div>
 
           {/* タブコンテンツ */}
-          <div style={{
-            background: 'white',
-            padding: '1.5rem',
-            borderRadius: '0 0 0.5rem 0.5rem',
-            border: '1px solid #e5e7eb',
-            borderTop: 'none'
-          }}>
+          <div
+            style={{
+                background: "white",
+                padding: "1.5rem",
+                borderRadius: "0 0 0.5rem 0.5rem",
+                border: "1px solid #e5e7eb",
+                borderTop: "none",
+                position: "relative",
+                zIndex: (isFirstVisit && isFirstVisitContinue && !isBookmarkMode && !hasSearched) ? 3000 : "auto",
+                borderTopLeftRadius: (isFirstVisit && isFirstVisitContinue && !isBookmarkMode && !hasSearched) ? '0.5rem' : '0',
+                borderTopRightRadius: (isFirstVisit && isFirstVisitContinue && !isBookmarkMode && !hasSearched) ? '0.5rem' : '0'
+            }}
+            >
             {isBookmarkMode && (
               <div style={{ 
                 marginBottom: '1.5rem', 
@@ -1810,6 +2080,86 @@ const HomePage: React.FC = () => {
                 initialFilters={initialFilters}
               />
             )}
+
+
+            {/* 検索入力のチュートリアル吹き出し */}
+            {isFirstVisit && isFirstVisitContinue && !isBookmarkMode && !hasSearched && (
+                <div
+                    style={{
+                        position: "absolute",
+                        bottom: "100%",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        marginBottom: "0.75rem", // 吹き出しと検索ボックスの間隔を調整
+                        background: "#ffffff",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: "0.5rem",
+                        padding: "1rem 1.5rem",
+                        whiteSpace: "nowrap",
+                        zIndex: 4000,
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.15)", // 影を追加して目立たせる
+              animation: 'fadeInModal 0.3s ease-out forwards'
+                    }}
+                >
+                    {/* コンテンツのラッパー */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                        
+                        {/* メインの案内テキスト */}
+                        <p style={{ margin: 0, fontSize: '1rem', color: '#374151', fontWeight: 'bold' }}>
+                        「代々木」と入力して検索してみましょう
+                        </p>
+
+                        {/* スキップボタン */}
+                        <button
+                        onClick={handleCloseOverlay}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#6b7280',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem',
+                            textDecoration: 'underline',
+                            padding: '0.25rem'
+                        }}
+                        >
+                        チュートリアルをスキップ
+                        </button>
+                    </div>
+
+                    {/* 吹き出しの矢印（下向き） */}
+                    {/* 枠線用の矢印 */}
+                    <div
+                        style={{
+                        position: "absolute",
+                        top: "100%",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        marginTop: '1px',
+                        width: 0,
+                        height: 0,
+                        borderLeft: "8px solid transparent",
+                        borderRight: "8px solid transparent",
+                        borderTop: "8px solid #e5e7eb",
+                        }}
+                    />
+                    {/* 本体用の矢印 */}
+                    <div
+                        style={{
+                        position: "absolute",
+                        top: "100%",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        width: 0,
+                        height: 0,
+                        borderLeft: "8px solid transparent",
+                        borderRight: "8px solid transparent",
+                        borderTop: "8px solid #ffffff"
+                        }}
+                    />
+                </div>
+            )}
+
+
           </div>
         </div>
 
@@ -1827,6 +2177,9 @@ const HomePage: React.FC = () => {
             isLoggedIn={isLoggedIn}
             onBookmarkToggle={handleBookmarkToggle}
             isBookmarked={(facilityId: number) => isBookmarked(facilityId.toString())}
+            isFirstVisit={isFirstVisit}
+            handleCloseOverlay={handleCloseOverlay}
+            isFirstVisitContinue={isFirstVisitContinue}
           />
         )}
 
