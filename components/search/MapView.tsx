@@ -1,4 +1,4 @@
-// components/search/MapView.tsx - 修正版（検索パラメータ対応）
+// components/search/MapView.tsx - 修正版（検索パラメータ対応・スマホ縦長対応）
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
@@ -32,6 +32,13 @@ const DynamicMap = dynamic(
          @keyframes spin {
            from { transform: rotate(0deg); }
            to { transform: rotate(360deg); }
+         }
+         
+         /* スマホ版の高さ調整 */
+         @media (max-width: 768px) {
+           .map-loading {
+             height: 70vh !important;
+           }
          }
        `}</style>
      </div>
@@ -70,7 +77,7 @@ interface Facility {
  services?: Service[];
 }
 
-// メインMapViewコンポーネント（検索パラメータ対応）
+// メインMapViewコンポーネント（検索パラメータ対応・スマホ縦長対応）
 const MapView: React.FC<{ 
  facilities: Facility[];
  loading?: boolean;
@@ -141,6 +148,14 @@ const MapView: React.FC<{
          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🗺️</div>
          <p>地図を準備中...</p>
        </div>
+       {/* スマホ版の高さ調整CSS */}
+       <style jsx>{`
+         @media (max-width: 768px) {
+           .map-loading {
+             height: 70vh !important;
+           }
+         }
+       `}</style>
      </div>
    );
  }
@@ -198,6 +213,43 @@ const MapView: React.FC<{
            <span>{validFacilities.length}件の事業所を地図上に表示</span>
          </div>
        )}
+       
+       {/* レスポンシブ地図サイズ調整のCSS */}
+       <style jsx global>{`
+         /* DynamicMapコンポーネント内の地図の高さを調整 */
+         .map-container .leaflet-container {
+           height: 600px !important;
+         }
+         
+         /* タブレット以下のサイズ */
+         @media (max-width: 768px) {
+           .map-container .leaflet-container {
+             height: 70vh !important;
+             min-height: 500px !important;
+           }
+           
+           .map-no-results {
+             padding: 2rem !important;
+             min-height: 70vh;
+             display: flex !important;
+             flex-direction: column !important;
+             justify-content: center !important;
+           }
+         }
+         
+         /* 小さいスマホサイズ */
+         @media (max-width: 480px) {
+           .map-container .leaflet-container {
+             height: 65vh !important;
+             min-height: 450px !important;
+           }
+           
+           .map-no-results {
+             padding: 1.5rem !important;
+             min-height: 65vh;
+           }
+         }
+       `}</style>
      </div>
    </div>
  );
