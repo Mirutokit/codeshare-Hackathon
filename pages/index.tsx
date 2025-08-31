@@ -11,6 +11,7 @@ import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import { useDevice } from '../hooks/useDevice';
 import { Bold } from 'lucide-react';
+import HelpModal from '../components/layout/HelpModal';
 
 // 地図コンポーネントを動的インポート（SSR対応）
 const MapView = dynamic(() => import('../components/search/MapView'), {
@@ -1362,6 +1363,7 @@ const HomePage: React.FC = () => {
   const [isRestoringBookmarks, setIsRestoringBookmarks] = useState(false); // 重複実行防止用
   const [isFirstVisit, setIsFirstVisit] = useState(false); // 初回アクセス管理用
   const [isFirstVisitContinue, setIsFirstVisitContinue] = useState(false); // 初回アクセス管理用
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false); // ヘルプモーダルの表示状態
 
   const isLoggedIn = !!user;
 
@@ -1880,6 +1882,7 @@ const HomePage: React.FC = () => {
         signOut={signOut}
         variant="home"           // ホームページ仕様
         showContactButton={true} // お問い合わせボタン表示
+        onHelpClick={() => setIsHelpModalOpen(true)} // ヘルプモーダル表示
       />
 
       {/* メインコンテンツ */}
@@ -2218,6 +2221,8 @@ const HomePage: React.FC = () => {
 
       {/* フッター */}
       <Footer />
+
+      <HelpModal open={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
     </div>
   );
 };

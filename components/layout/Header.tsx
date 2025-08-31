@@ -14,6 +14,7 @@ interface HeaderProps {
   showHelpButton?: boolean // ヘルプボタン表示用のPropを追加
   customTitle?: string
   hideSubtitle?: boolean  
+  onHelpClick?: () => void // ヘルプボタンのクリックハンドラ
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -23,7 +24,8 @@ const Header: React.FC<HeaderProps> = ({
   showContactButton = true, 
   showHelpButton = true, // Propのデフォルト値を追加
   customTitle,
-  hideSubtitle = false
+  hideSubtitle = false,
+  onHelpClick
 }) => {
   const { user } = useAuthContext()
   const { isMobile } = useDevice()
@@ -41,7 +43,8 @@ const Header: React.FC<HeaderProps> = ({
     hideSubtitle,
     user,
     userType,
-    myPagePath
+    myPagePath,
+    onHelpClick
   }
 
   if (isMobile) {
@@ -61,7 +64,8 @@ function MobileHeader({
   hideSubtitle,
   user,
   userType,
-  myPagePath
+  myPagePath,
+  onHelpClick
 }: HeaderProps & { user?: any, userType?: string, myPagePath?: string }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
@@ -287,7 +291,7 @@ function MobileHeader({
               {/* ヘルプボタン */}
               {showHelpButton && (
                 <Link
-                  href="/help"
+                  href=""
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -302,7 +306,10 @@ function MobileHeader({
                     fontWeight: '500',
                     border: '1px solid #d1d5db'
                   }}
-                  onClick={() => setIsMenuOpen(false)}
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    onHelpClick?.();
+                  }}
                 >
                   <HelpCircle size={16} />
                   ヘルプ
@@ -345,7 +352,8 @@ function DesktopHeader({
   hideSubtitle,
   user,
   userType,
-  myPagePath
+  myPagePath,
+  onHelpClick
 }: HeaderProps & { user?: any, userType?: string, myPagePath?: string }) {
   const handleLogout = async () => {
     const { error } = await signOut()
@@ -664,11 +672,10 @@ function DesktopHeader({
                 事業者ログイン
               </Link>
               
-              {/* ▼▼▼ 追加 ▼▼▼ */}
               {/* ヘルプボタン（ログアウト時） */}
               {showHelpButton && (
                 <Link
-                  href="/help"
+                  href=""
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -691,12 +698,14 @@ function DesktopHeader({
                     e.currentTarget.style.borderColor = '#d1d5db'
                     e.currentTarget.style.color = '#6b7280'
                   }}
+                  onClick={() => {
+                    onHelpClick?.();
+                  }}
                 >
                   <HelpCircle size={16} />
                   ヘルプ
                 </Link>
               )}
-              {/* ▲▲▲ 追加 ▲▲▲ */}
 
               {/* お問い合わせボタン（ログアウト時） */}
               {showContactButton && (
