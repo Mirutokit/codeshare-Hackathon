@@ -32,6 +32,7 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [isRedirecting, setIsRedirecting] = useState(false)
+  const [showDevelopmentPopup, setShowDevelopmentPopup] = useState(false)
 
   // 認証状態変更を監視してリダイレクト
   useEffect(() => {
@@ -65,6 +66,15 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
     setError(null)
     setSuccess(null)
     setShowPassword(false)
+  }
+
+  const handleForgotPasswordClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setShowDevelopmentPopup(true)
+  }
+
+  const closeDevelopmentPopup = () => {
+    setShowDevelopmentPopup(false)
   }
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -301,6 +311,82 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
             <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
               {user?.email} としてログイン中
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* 開発中ポップアップ */}
+      {showDevelopmentPopup && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10001
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '0.75rem',
+            padding: '2rem',
+            maxWidth: '28rem',
+            margin: '1rem',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.25)'
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{
+                  width: '3rem',
+                  height: '3rem',
+                  margin: '0 auto',
+                  backgroundColor: '#fef3c7',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <span style={{ fontSize: '1.5rem' }}>🚧</span>
+                </div>
+              </div>
+              <h3 style={{
+                fontSize: '1.125rem',
+                fontWeight: 600,
+                color: '#111827',
+                marginBottom: '0.5rem'
+              }}>
+                開発中の機能です
+              </h3>
+              <p style={{
+                color: '#6b7280',
+                marginBottom: '1.5rem',
+                lineHeight: '1.5'
+              }}>
+                パスワードリセット機能は現在開発中です。<br />
+                しばらくお待ちください。
+              </p>
+              <button
+                onClick={closeDevelopmentPopup}
+                style={{
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '0.375rem',
+                  border: 'none',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#2563eb'}
+                onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#3b82f6'}
+              >
+                閉じる
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -580,10 +666,12 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
               <div style={{ textAlign: 'center' }}>
                 <a 
                   href="/auth/forgot-password" 
+                  onClick={handleForgotPasswordClick}
                   style={{ 
                     fontSize: '0.875rem', 
                     color: '#6b7280', 
-                    textDecoration: 'none' 
+                    textDecoration: 'none',
+                    cursor: 'pointer'
                   }}
                   onMouseEnter={(e) => (e.target as HTMLAnchorElement).style.color = '#22c55e'}
                   onMouseLeave={(e) => (e.target as HTMLAnchorElement).style.color = '#6b7280'}
@@ -729,9 +817,9 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
                 textAlign: 'center'
               }}>
                 アカウント作成により、
-                <a href="/terms" style={{ color: '#22c55e', textDecoration: 'none' }}>利用規約</a>
+                <a style={{ color: '#22c55e', textDecoration: 'none' }}>利用規約</a>
                 と
-                <a href="/privacy" style={{ color: '#22c55e', textDecoration: 'none' }}>プライバシーポリシー</a>
+                <a style={{ color: '#22c55e', textDecoration: 'none' }}>プライバシーポリシー</a>
                 に同意したものとみなされます
               </div>
             </form>
