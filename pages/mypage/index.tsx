@@ -929,7 +929,7 @@ const UserMyPage: React.FC = () => {
                     background: activeTab === tab.key ? '#22c55e' : 'transparent',
                     color: activeTab === tab.key ? 'white' : '#6b7280',
                     border: 'none',
-                    fontSize: '0.875rem',
+                    fontSize: '0.775rem',
                     fontWeight: 500,
                     cursor: 'pointer',
                     display: 'flex',
