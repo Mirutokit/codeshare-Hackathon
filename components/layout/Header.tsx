@@ -1,7 +1,7 @@
 // components/layout/Header.tsx - スマホ対応版
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { User, LogOut, Building2, Users } from 'lucide-react'
+import { User, LogOut, Building2, Users, HelpCircle } from 'lucide-react' // HelpCircle をインポート
 import { useAuthContext } from '@/components/providers/AuthProvider'
 import { getMyPagePath, getUserType } from '@/lib/utils/userType'
 import { useDevice } from '../../hooks/useDevice'
@@ -11,8 +11,10 @@ interface HeaderProps {
   signOut: () => Promise<{ error?: any }>
   variant?: 'home' | 'mypage'
   showContactButton?: boolean
+  showHelpButton?: boolean // ヘルプボタン表示用のPropを追加
   customTitle?: string
   hideSubtitle?: boolean  
+  onHelpClick?: () => void // ヘルプボタンのクリックハンドラ
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -20,8 +22,10 @@ const Header: React.FC<HeaderProps> = ({
   signOut, 
   variant = 'home', 
   showContactButton = true, 
+  showHelpButton = true, // Propのデフォルト値を追加
   customTitle,
-  hideSubtitle = false
+  hideSubtitle = false,
+  onHelpClick
 }) => {
   const { user } = useAuthContext()
   const { isMobile } = useDevice()
@@ -34,11 +38,13 @@ const Header: React.FC<HeaderProps> = ({
     signOut,
     variant,
     showContactButton,
+    showHelpButton, // commonPropsに追加
     customTitle,
     hideSubtitle,
     user,
     userType,
-    myPagePath
+    myPagePath,
+    onHelpClick
   }
 
   if (isMobile) {
@@ -53,11 +59,13 @@ function MobileHeader({
   signOut, 
   variant, 
   showContactButton, 
+  showHelpButton, // Propを受け取る
   customTitle, 
   hideSubtitle,
   user,
   userType,
-  myPagePath
+  myPagePath,
+  onHelpClick
 }: HeaderProps & { user?: any, userType?: string, myPagePath?: string }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
@@ -280,6 +288,34 @@ function MobileHeader({
                 </>
               )}
               
+              {/* ヘルプボタン */}
+              {showHelpButton && (
+                <Link
+                  href=""
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    padding: '0.75rem',
+                    background: '#f3f4f6', 
+                    color: '#374151', 
+                    textDecoration: 'none',
+                    borderRadius: '0.375rem',
+                    textAlign: 'center',
+                    fontWeight: '500',
+                    border: '1px solid #d1d5db'
+                  }}
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    onHelpClick?.();
+                  }}
+                >
+                  <HelpCircle size={16} />
+                  ヘルプ
+                </Link>
+              )}
+
               {/* お問い合わせボタン */}
               {showContactButton && (
                 <Link
@@ -312,10 +348,12 @@ function DesktopHeader({
   signOut, 
   variant, 
   showContactButton, 
+  showHelpButton, // Propを受け取る
   hideSubtitle,
   user,
   userType,
-  myPagePath
+  myPagePath,
+  onHelpClick
 }: HeaderProps & { user?: any, userType?: string, myPagePath?: string }) {
   const handleLogout = async () => {
     const { error } = await signOut()
@@ -356,14 +394,7 @@ function DesktopHeader({
               alignItems: 'center', 
               gap: '0.75rem',
               textDecoration: 'none',
-              cursor: 'pointer',
-              transition: 'opacity 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              (e.target as HTMLElement).style.opacity = '0.8'
-            }}
-            onMouseLeave={(e) => {
-              (e.target as HTMLElement).style.opacity = '1'
+              cursor: 'pointer'
             }}
           >
             <div style={{
@@ -440,12 +471,12 @@ function DesktopHeader({
                     transition: 'all 0.2s'
                   }}
                   onMouseEnter={(e) => {
-                    (e.target as HTMLAnchorElement).style.backgroundColor = '#22c55e'
-                    ;(e.target as HTMLAnchorElement).style.color = 'white'
+                    e.currentTarget.style.backgroundColor = '#22c55e'
+                    e.currentTarget.style.color = 'white'
                   }}
                   onMouseLeave={(e) => {
-                    (e.target as HTMLAnchorElement).style.backgroundColor = 'transparent'
-                    ;(e.target as HTMLAnchorElement).style.color = '#22c55e'
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                    e.currentTarget.style.color = '#22c55e'
                   }}
                 >
                   <User size={16} />
@@ -471,12 +502,12 @@ function DesktopHeader({
                     transition: 'all 0.2s'
                   }}
                   onMouseEnter={(e) => {
-                    (e.target as HTMLAnchorElement).style.backgroundColor = '#22c55e'
-                    ;(e.target as HTMLAnchorElement).style.color = 'white'
+                    e.currentTarget.style.backgroundColor = '#22c55e'
+                    e.currentTarget.style.color = 'white'
                   }}
                   onMouseLeave={(e) => {
-                    (e.target as HTMLAnchorElement).style.backgroundColor = 'transparent'
-                    ;(e.target as HTMLAnchorElement).style.color = '#22c55e'
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                    e.currentTarget.style.color = '#22c55e'
                   }}
                 >
                   <User size={16} />
@@ -515,6 +546,40 @@ function DesktopHeader({
                 ログアウト
               </button>
 
+              {/* ▼▼▼ 追加 ▼▼▼ */}
+              {/* ヘルプボタン（ログイン時） */}
+              {showHelpButton && (
+                <Link
+                  href="/help"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontSize: '0.875rem',
+                    color: '#6b7280',
+                    textDecoration: 'none',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '0.375rem',
+                    border: '1px solid #d1d5db',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f9fafb'
+                    e.currentTarget.style.borderColor = '#22c55e'
+                    e.currentTarget.style.color = '#22c55e'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                    e.currentTarget.style.borderColor = '#d1d5db'
+                    e.currentTarget.style.color = '#6b7280'
+                  }}
+                >
+                  <HelpCircle size={16} />
+                  ヘルプ
+                </Link>
+              )}
+              {/* ▲▲▲ 追加 ▲▲▲ */}
+
               {/* お問い合わせボタン（ログイン時） */}
               {showContactButton && (
                 <Link 
@@ -529,14 +594,14 @@ function DesktopHeader({
                     transition: 'all 0.2s'
                   }}
                   onMouseEnter={(e) => {
-                    (e.target as HTMLAnchorElement).style.backgroundColor = '#f9fafb'
-                    ;(e.target as HTMLAnchorElement).style.borderColor = '#22c55e'
-                    ;(e.target as HTMLAnchorElement).style.color = '#22c55e'
+                    e.currentTarget.style.backgroundColor = '#f9fafb'
+                    e.currentTarget.style.borderColor = '#22c55e'
+                    e.currentTarget.style.color = '#22c55e'
                   }}
                   onMouseLeave={(e) => {
-                    (e.target as HTMLAnchorElement).style.backgroundColor = 'transparent'
-                    ;(e.target as HTMLAnchorElement).style.borderColor = '#d1d5db'
-                    ;(e.target as HTMLAnchorElement).style.color = '#6b7280'
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                    e.currentTarget.style.borderColor = '#d1d5db'
+                    e.currentTarget.style.color = '#6b7280'
                   }}
                 >
                   お問い合わせ
@@ -563,14 +628,14 @@ function DesktopHeader({
                   background: 'white'
                 }}
                 onMouseEnter={(e) => {
-                  (e.target as HTMLAnchorElement).style.backgroundColor = '#f9fafb'
-                  ;(e.target as HTMLAnchorElement).style.borderColor = '#22c55e'
-                  ;(e.target as HTMLAnchorElement).style.color = '#22c55e'
+                  e.currentTarget.style.backgroundColor = '#f9fafb'
+                  e.currentTarget.style.borderColor = '#22c55e'
+                  e.currentTarget.style.color = '#22c55e'
                 }}
                 onMouseLeave={(e) => {
-                  (e.target as HTMLAnchorElement).style.backgroundColor = 'white'
-                  ;(e.target as HTMLAnchorElement).style.borderColor = '#e5e7eb'
-                  ;(e.target as HTMLAnchorElement).style.color = '#6b7280'
+                  e.currentTarget.style.backgroundColor = 'white'
+                  e.currentTarget.style.borderColor = '#e5e7eb'
+                  e.currentTarget.style.color = '#6b7280'
                 }}
               >
                 <Users size={16} />
@@ -595,17 +660,52 @@ function DesktopHeader({
                   background: 'white'
                 }}
                 onMouseEnter={(e) => {
-                  (e.target as HTMLAnchorElement).style.backgroundColor = '#22c55e'
-                  ;(e.target as HTMLAnchorElement).style.color = 'white'
+                  e.currentTarget.style.backgroundColor = '#22c55e'
+                  e.currentTarget.style.color = 'white'
                 }}
                 onMouseLeave={(e) => {
-                  (e.target as HTMLAnchorElement).style.backgroundColor = 'white'
-                  ;(e.target as HTMLAnchorElement).style.color = '#22c55e'
+                  e.currentTarget.style.backgroundColor = 'white'
+                  e.currentTarget.style.color = '#22c55e'
                 }}
               >
                 <Building2 size={16} />
                 事業者ログイン
               </Link>
+              
+              {/* ヘルプボタン（ログアウト時） */}
+              {showHelpButton && (
+                <Link
+                  href=""
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontSize: '0.875rem',
+                    color: '#6b7280',
+                    textDecoration: 'none',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '0.375rem',
+                    border: '1px solid #d1d5db',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f9fafb'
+                    e.currentTarget.style.borderColor = '#22c55e'
+                    e.currentTarget.style.color = '#22c55e'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                    e.currentTarget.style.borderColor = '#d1d5db'
+                    e.currentTarget.style.color = '#6b7280'
+                  }}
+                  onClick={() => {
+                    onHelpClick?.();
+                  }}
+                >
+                  <HelpCircle size={16} />
+                  ヘルプ
+                </Link>
+              )}
 
               {/* お問い合わせボタン（ログアウト時） */}
               {showContactButton && (
@@ -621,14 +721,14 @@ function DesktopHeader({
                     transition: 'all 0.2s'
                   }}
                   onMouseEnter={(e) => {
-                    (e.target as HTMLAnchorElement).style.backgroundColor = '#f9fafb'
-                    ;(e.target as HTMLAnchorElement).style.borderColor = '#22c55e'
-                    ;(e.target as HTMLAnchorElement).style.color = '#22c55e'
+                    e.currentTarget.style.backgroundColor = '#f9fafb'
+                    e.currentTarget.style.borderColor = '#22c55e'
+                    e.currentTarget.style.color = '#22c55e'
                   }}
                   onMouseLeave={(e) => {
-                    (e.target as HTMLAnchorElement).style.backgroundColor = 'transparent'
-                    ;(e.target as HTMLAnchorElement).style.borderColor = '#d1d5db'
-                    ;(e.target as HTMLAnchorElement).style.color = '#6b7280'
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                    e.currentTarget.style.borderColor = '#d1d5db'
+                    e.currentTarget.style.color = '#6b7280'
                   }}
                 >
                   お問い合わせ

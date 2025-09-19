@@ -51,6 +51,8 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
     setShowPassword(false)
   }
 
+ 
+
   // handleLoginSubmit 関数を大幅に修正します
 
 const handleLoginSubmit = async (e: React.FormEvent) => {
