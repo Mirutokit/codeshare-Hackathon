@@ -36,30 +36,14 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
 
   // 認証状態変更を監視してリダイレクト
   useEffect(() => {
-    if (user && !authLoading && !isRedirecting) {
-      console.log('=== 事業者認証状態検出、リダイレクト実行 ===')
-      console.log('User:', user.email)
-      console.log('Current path:', router.asPath)
-      
-      // 施設ログインページにいる場合のみリダイレクト
-      if (router.asPath === '/auth/facilitylogin' || router.asPath.includes('/auth/facilitylogin')) {
-        console.log('施設ログインページからマイページへリダイレクト')
-        
-        setIsRedirecting(true)
-        setSuccess('ログイン成功！事業者マイページに移動します...')
-        
-        setTimeout(() => {
-          // 複数の方法で確実にリダイレクト
-          try {
-            router.replace('/business/mypage')
-          } catch (error) {
-            console.warn('Router failed, using window.location')
-            window.location.href = '/business/mypage'
-          }
-        }, 1000)
-      }
+    // 【ページガード】
+    // 認証済みユーザーがこのページにアクセスした場合、事業者マイページにリダイレクトする
+    if (!authLoading && user) {
+      console.log('=== 認証済みユーザーを検出、事業者マイページへリダイレクトします ===');
+      // ここは事業者ページなので、適切なマイページへリダイレクト
+      router.replace('/business/mypage');
     }
-  }, [user, authLoading, router, isRedirecting])
+  }, [user, authLoading, router]);
 
   const handleTabChange = (tab: 'login' | 'register') => {
     setActiveTab(tab)
@@ -68,48 +52,75 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
     setShowPassword(false)
   }
 
+  // mainブランチから追加された機能
   const handleForgotPasswordClick = (e: React.MouseEvent) => {
     e.preventDefault()
     setShowDevelopmentPopup(true)
   }
 
+  // mainブランチから追加された機能
   const closeDevelopmentPopup = () => {
     setShowDevelopmentPopup(false)
   }
 
+  // fix_Loginbugブランチの新しいログイン処理
   const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-
-    console.log('=== 事業者ログイン処理開始 ===')
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
 
     try {
-      const { error } = await signInWithEmail(loginData.email, loginData.password)
-      
-      if (error) {
-        console.error('事業者ログインエラー:', error)
-        
-        if (error.message.includes('email_not_confirmed') || error.message.includes('Email not confirmed')) {
-          setError('メールアドレスの確認が完了していません。確認メールをご確認いただくか、開発環境の場合はSupabaseの設定をご確認ください。')
-        } else if (error.message.includes('Invalid login credentials')) {
-          setError('メールアドレスまたはパスワードが正しくありません。')
+      // Step 1: 認証
+      const { data: authData, error: signInError } = await signInWithEmail(
+        loginData.email,
+        loginData.password
+      );
+
+      if (signInError) {
+        if (signInError.message.includes('Invalid login credentials')) {
+          setError('メールアドレスまたはパスワードが正しくありません。');
         } else {
-          setError('ログインに失敗しました: ' + error.message)
+          setError(`ログインに失敗しました: ${signInError.message}`);
         }
-      } else {
-        console.log('=== 事業者ログイン成功、認証状態変更を待機 ===')
-        setSuccess('ログインに成功しました。認証状態を更新中...')
+        setLoading(false);
+        return;
+      }
+
+      if (authData.user) {
+        // Step 2: 認可 - ユーザー種別を確認
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles') // 実際のプロフィールテーブル名に合わせる
+          .select('user_type')
+          .eq('id', authData.user.id)
+          .single();
+
+        if (profileError || !profile) {
+          setError('ユーザー情報の取得に失敗しました。管理者にお問い合わせください。');
+          await supabase.auth.signOut();
+          setLoading(false);
+          return;
+        }
         
-        // 認証状態の変更はuseEffectで処理される
+        // Step 3: 権限を検証
+        if (profile.user_type === 'facility') {
+          // 🎉 成功！事業者アカウントが事業者ページでログインした
+          setSuccess('ログイン成功！事業者マイページに移動します...');
+          setIsRedirecting(true); // オーバーレイ表示用
+          router.replace('/business/mypage'); // ★ 事業者用マイページへ
+        } else {
+          // 失敗！利用者アカウントが事業者ページでログインしようとした
+          setError('このアカウントは利用者用です。利用者向けログインページからログインしてください。');
+          await supabase.auth.signOut(); // 間違ったセッションを破棄
+          setLoading(false);
+        }
       }
     } catch (err) {
-      console.error('事業者ログイン処理例外:', err)
-      setError('ログインに失敗しました')
-    } finally {
-      setLoading(false)
+      console.error('ログイン処理中に予期せぬエラーが発生しました:', err);
+      setError('予期せぬエラーが発生しました。');
+      setLoading(false);
     }
-  }
+  };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -120,13 +131,12 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
     setError(null)
     setSuccess(null)
 
-    // バリデーション（基本情報のみ）
+    // バリデーション
     if (!registerData.email || !registerData.password || !registerData.fullName) {
       setError('すべての項目を入力してください')
       setLoading(false)
       return
     }
-
     if (registerData.password.length < 6) {
       setError('パスワードは6文字以上で入力してください')
       setLoading(false)
@@ -136,14 +146,14 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
     try {
       console.log('=== 事業者新規登録開始（簡素化版） ===')
 
-      // Step 1: メタデータ付きで事業者ユーザー作成
+      // Step 1: ユーザー作成
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: registerData.email,
         password: registerData.password,
         options: {
           data: {
             full_name: registerData.fullName,
-            user_type: 'facility' // 事業者として識別
+            user_type: 'facility'
           }
         }
       })
@@ -159,31 +169,29 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
       if (!userId) {
         throw new Error('ユーザーIDが取得できませんでした')
       }
-
       console.log('Step 1完了 - ユーザーID:', userId)
-
-      // Step 2: handle_new_user処理待機
+      
+      // Step 2: DBトリガーの処理を待つ
       console.log('Step 2: handle_new_user処理待機中...')
       await new Promise(resolve => setTimeout(resolve, 2000))
 
-      // Step 3: 基本的なfacilityレコードを作成（詳細は後でマイページで設定）
+      // Step 3: facilityレコードを作成
       console.log('Step 3: 基本facility情報作成中...')
       const { error: facilityError } = await supabase
         .from('facilities')
         .insert({
           user_id: userId,
-          name: '事業所名を設定してください', // デフォルト値
+          name: '事業所名を設定してください',
           description: '事業所の詳細情報を入力してください',
           address: '住所を入力してください',
-          district: '新宿区', // デフォルト値
+          district: '新宿区',
           phone_number: null,
-          is_active: false // 詳細設定完了まで非公開
+          is_active: false
         })
 
       if (facilityError) {
         console.error('facility作成エラー:', facilityError)
-        
-        // 手動でpublic.usersレコード作成を試行
+        // エラーハンドリングは既存のまま
         console.log('手動でpublic.usersレコード作成を試行...')
         await supabase.rpc('create_user_manually', {
           p_user_id: userId,
@@ -191,8 +199,6 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
           p_full_name: registerData.fullName,
           p_user_type: 'facility'
         })
-        
-        // 再度facilityレコード作成を試行
         const { error: retryError } = await supabase
           .from('facilities')
           .insert({
@@ -204,7 +210,6 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
             phone_number: null,
             is_active: false
           })
-        
         if (retryError) {
           setError('事業者アカウント作成に失敗しました。サポートまでお問い合わせください。')
           setLoading(false)
@@ -233,20 +238,15 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
   // エラーメッセージのヘルパー関数
   const getAuthErrorMessage = (error: any): string => {
     if (error.message) {
-      if (error.message.includes('already registered') || 
-          error.message.includes('User already registered')) {
+      if (error.message.includes('already registered') || error.message.includes('User already registered')) {
         return 'このメールアドレスは既に登録されています'
-      } else if (error.message.includes('invalid email') ||
-                 error.message.includes('Invalid email')) {
+      } else if (error.message.includes('invalid email') || error.message.includes('Invalid email')) {
         return '無効なメールアドレスです'
-      } else if (error.message.includes('password') ||
-                 error.message.includes('Password')) {
+      } else if (error.message.includes('password') || error.message.includes('Password')) {
         return 'パスワードが要件を満たしていません（6文字以上の英数字）'
-      } else if (error.message.includes('network') ||
-                 error.message.includes('fetch')) {
+      } else if (error.message.includes('network') || error.message.includes('fetch')) {
         return 'ネットワークエラーが発生しました。インターネット接続を確認してください'
-      } else if (error.message.includes('email_not_confirmed') || 
-                 error.message.includes('Email not confirmed')) {
+      } else if (error.message.includes('email_not_confirmed') || error.message.includes('Email not confirmed')) {
         return 'メールアドレスの確認が完了していません。確認メールをご確認いただくか、開発環境の場合はSupabaseの設定をご確認ください。'
       } else if (error.message.includes('Invalid login credentials')) {
         return 'メールアドレスまたはパスワードが正しくありません。'
@@ -271,116 +271,31 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
 
   return (
     <div className="container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem 1rem' }}>
-      {/* 認証済みでリダイレクト中の場合は、リダイレクトオーバーレイを表示 */}
       {isRedirecting && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10000
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '2rem',
-            borderRadius: '0.5rem',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-            textAlign: 'center',
-            border: '1px solid #e5e7eb'
-          }}>
-            <div style={{ 
-              width: '3rem', 
-              height: '3rem', 
-              border: '3px solid #22c55e',
-              borderTop: '3px solid transparent',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-              margin: '0 auto 1rem'
-            }}></div>
-            <p style={{ color: '#166534', fontWeight: 500, marginBottom: '0.5rem' }}>
-              事業者ログイン完了！
-            </p>
-            <p style={{ color: '#166534', fontWeight: 500, marginBottom: '0.5rem' }}>
-              事業者マイページに移動しています...
-            </p>
-            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-              {user?.email} としてログイン中
-            </p>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255, 255, 255, 0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }}>
+          <div style={{ background: 'white', padding: '2rem', borderRadius: '0.5rem', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)', textAlign: 'center', border: '1px solid #e5e7eb' }}>
+            <div style={{ width: '3rem', height: '3rem', border: '3px solid #22c55e', borderTop: '3px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem' }}></div>
+            <p style={{ color: '#166534', fontWeight: 500, marginBottom: '0.5rem' }}>事業者ログイン完了！</p>
+            <p style={{ color: '#166534', fontWeight: 500, marginBottom: '0.5rem' }}>事業者マイページに移動しています...</p>
+            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{user?.email} としてログイン中</p>
           </div>
         </div>
       )}
 
-      {/* 開発中ポップアップ */}
       {showDevelopmentPopup && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10001
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '0.75rem',
-            padding: '2rem',
-            maxWidth: '28rem',
-            margin: '1rem',
-            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.25)'
-          }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001 }}>
+          <div style={{ background: 'white', borderRadius: '0.75rem', padding: '2rem', maxWidth: '28rem', margin: '1rem', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.25)' }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ marginBottom: '1rem' }}>
-                <div style={{
-                  width: '3rem',
-                  height: '3rem',
-                  margin: '0 auto',
-                  backgroundColor: '#fef3c7',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
+                <div style={{ width: '3rem', height: '3rem', margin: '0 auto', backgroundColor: '#fef3c7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ fontSize: '1.5rem' }}>🚧</span>
                 </div>
               </div>
-              <h3 style={{
-                fontSize: '1.125rem',
-                fontWeight: 600,
-                color: '#111827',
-                marginBottom: '0.5rem'
-              }}>
-                開発中の機能です
-              </h3>
-              <p style={{
-                color: '#6b7280',
-                marginBottom: '1.5rem',
-                lineHeight: '1.5'
-              }}>
-                パスワードリセット機能は現在開発中です。<br />
-                しばらくお待ちください。
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#111827', marginBottom: '0.5rem' }}>開発中の機能です</h3>
+              <p style={{ color: '#6b7280', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+                パスワードリセット機能は現在開発中です。<br />しばらくお待ちください。
               </p>
-              <button
-                onClick={closeDevelopmentPopup}
-                style={{
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  padding: '0.75rem 1.5rem',
-                  borderRadius: '0.375rem',
-                  border: 'none',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s'
-                }}
+              <button onClick={closeDevelopmentPopup} style={{ backgroundColor: '#3b82f6', color: 'white', padding: '0.75rem 1.5rem', borderRadius: '0.375rem', border: 'none', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', transition: 'background-color 0.2s' }}
                 onMouseEnter={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#2563eb'}
                 onMouseLeave={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#3b82f6'}
               >
@@ -392,72 +307,20 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
       )}
 
       <div style={{ maxWidth: '32rem', width: '100%' }}>
-        {/* ヘッダーナビゲーション */}
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          marginBottom: '2rem',
-          padding: '0 0.5rem'
-        }}>
-          {/* ロゴ部分 */}
-          <Link 
-            href="/" 
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.75rem',
-              textDecoration: 'none',
-              cursor: 'pointer',
-              transition: 'opacity 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              (e.target as HTMLElement).style.opacity = '0.8'
-            }}
-            onMouseLeave={(e) => {
-              (e.target as HTMLElement).style.opacity = '1'
-            }}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', padding: '0 0.5rem' }}>
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none', cursor: 'pointer', transition: 'opacity 0.2s' }}
+            onMouseEnter={(e) => { (e.target as HTMLElement).style.opacity = '0.8' }}
+            onMouseLeave={(e) => { (e.target as HTMLElement).style.opacity = '1' }}
           >
-            <div style={{
-              width: '2.5rem',
-              height: '2.5rem',
-              background: '#22c55e',
-              borderRadius: '0.5rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontSize: '1.25rem',
-              fontWeight: 'bold'
-            }}>
+            <div style={{ width: '2.5rem', height: '2.5rem', background: '#22c55e', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.25rem', fontWeight: 'bold' }}>
               C
             </div>
-            <span style={{ 
-              fontSize: '1.25rem', 
-              fontWeight: 700, 
-              color: '#111827' 
-            }}>
+            <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>
               ケアコネクト
             </span>
           </Link>
           
-          {/* 利用者ログインボタン */}
-          <Link 
-            href="/auth/userlogin" 
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.5rem',
-              color: '#6b7280',
-              textDecoration: 'none',
-              fontSize: '0.875rem',
-              fontWeight: 500,
-              padding: '0.75rem 1rem',
-              borderRadius: '0.5rem',
-              border: '1px solid #e5e7eb',
-              transition: 'all 0.2s',
-              background: 'white'
-            }}
+          <Link href="/auth/userlogin" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', textDecoration: 'none', fontSize: '0.875rem', fontWeight: 500, padding: '0.75rem 1rem', borderRadius: '0.5rem', border: '1px solid #e5e7eb', transition: 'all 0.2s', background: 'white' }}
             onMouseEnter={(e) => {
               (e.target as HTMLAnchorElement).style.backgroundColor = '#f9fafb'
               ;(e.target as HTMLAnchorElement).style.borderColor = '#22c55e'
@@ -474,7 +337,6 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
           </Link>
         </div>
 
-        {/* メインコンテンツヘッダー */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
             <Building2 size={28} style={{ color: '#22c55e' }} />
@@ -488,12 +350,7 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
         </div>
 
         <div style={{ background: 'white', borderRadius: '0.75rem', boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-          {/* タブヘッダー */}
-          <div style={{ 
-            display: 'flex',
-            background: '#f9fafb',
-            borderBottom: '1px solid #e5e7eb'
-          }}>
+          <div style={{ display: 'flex', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
             <button
               type="button"
               onClick={() => handleTabChange('login')}
@@ -532,9 +389,7 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
             </button>
           </div>
 
-          {/* タブコンテンツ */}
           <div style={{ padding: '2rem' }}>
-            {/* タブコンテンツヘッダー */}
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
               <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', marginBottom: '0.5rem' }}>
                 {activeTab === 'login' ? '事業者ログイン' : '事業者アカウント作成'}
@@ -547,314 +402,306 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
               </p>
             </div>
 
-          {/* エラー・成功メッセージ */}
-          {error && (
-            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
-              {error}
-              {error.includes('email_not_confirmed') && activeTab === 'login' && (
-                <div style={{ marginTop: '0.75rem' }}>
-                  <Link 
-                    href="/auth/verify-email" 
-                    style={{ 
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      color: '#2563eb', 
-                      textDecoration: 'none',
-                      fontSize: '0.875rem',
-                      fontWeight: 500
-                    }}
-                  >
-                    メール確認ページを見る →
-                  </Link>
-                </div>
-              )}
-            </div>
-          )}
-
-          {success && (
-            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
-              {success}
-            </div>
-          )}
-
-          {/* ログインフォーム */}
-          {activeTab === 'login' && (
-            <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div style={{ textAlign: 'center' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
-                  <Mail size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
-                  メールアドレス
-                </label>
-                <Input
-                  name="email"
-                  type="email"
-                  value={loginData.email}
-                  onChange={handleLoginChange}
-                  placeholder="business@email.com"
-                  required
-                  style={{ width: '12rem' }}
-                />
-              </div>
-
-              <div style={{ textAlign: 'center' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
-                  <Lock size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
-                  パスワード
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <Input
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={loginData.password}
-                    onChange={handleLoginChange}
-                    placeholder="password"
-                    required
-                    style={{ paddingRight: '2.5rem', width: '12rem' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: '6rem',
-                      top: '60%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      color: '#6b7280',
-                      cursor: 'pointer',
-                      padding: '0.25rem'
-                    }}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                loading={loading}
-                className="w-full cta-primary"
-                style={{ 
-                  width: '100%', 
-                  justifyContent: 'center',
-                  padding: '0.75rem 1rem',
-                  fontSize: '1rem',
-                  fontWeight: 600
-                }}
-              >
-                {loading ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{ 
-                      width: '1rem', 
-                      height: '1rem', 
-                      border: '2px solid transparent',
-                      borderTop: '2px solid currentColor',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite'
-                    }}></div>
-                    ログイン中...
+            {error && (
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+                {error}
+                {error.includes('email_not_confirmed') && activeTab === 'login' && (
+                  <div style={{ marginTop: '0.75rem' }}>
+                    <Link 
+                      href="/auth/verify-email" 
+                      style={{ 
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        color: '#2563eb', 
+                        textDecoration: 'none',
+                        fontSize: '0.875rem',
+                        fontWeight: 500
+                      }}
+                    >
+                      メール確認ページを見る →
+                    </Link>
                   </div>
-                ) : (
-                  'ログイン'
                 )}
-              </Button>
-
-              {/* パスワードを忘れた場合 */}
-              <div style={{ textAlign: 'center' }}>
-                <a 
-                  href="/auth/forgot-password" 
-                  onClick={handleForgotPasswordClick}
-                  style={{ 
-                    fontSize: '0.875rem', 
-                    color: '#6b7280', 
-                    textDecoration: 'none',
-                    cursor: 'pointer'
-                  }}
-                  onMouseEnter={(e) => (e.target as HTMLAnchorElement).style.color = '#22c55e'}
-                  onMouseLeave={(e) => (e.target as HTMLAnchorElement).style.color = '#6b7280'}
-                >
-                  パスワードをお忘れの場合
-                </a>
               </div>
-            </form>
-          )}
+            )}
 
-          {/* 新規登録フォーム */}
-          {activeTab === 'register' && (
-            <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div style={{ textAlign: 'center' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
-                  <User size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
-                  担当者名 <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <Input
-                  name="fullName"
-                  type="text"
-                  value={registerData.fullName}
-                  onChange={handleRegisterChange}
-                  placeholder="山田 太郎"
-                  required
-                  style={{ width: '12rem' }}
-                />
-                <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                  事業所の担当者名を入力してください
-                </p>
+            {success && (
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+                {success}
               </div>
+            )}
 
-              <div style={{ textAlign: 'center' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
-                  <Mail size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
-                  メールアドレス <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <Input
-                  name="email"
-                  type="email"
-                  value={registerData.email}
-                  onChange={handleRegisterChange}
-                  placeholder="business@email.com"
-                  required
-                  style={{ width: '12rem' }}
-                />
-              </div>
-
-              <div style={{ textAlign: 'center' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
-                  <Lock size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
-                  パスワード <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <div style={{ position: 'relative' }}>
+            {activeTab === 'login' && (
+              <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
+                    <Mail size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
+                    メールアドレス
+                  </label>
                   <Input
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={registerData.password}
-                    onChange={handleRegisterChange}
-                    placeholder="password"
+                    name="email"
+                    type="email"
+                    value={loginData.email}
+                    onChange={handleLoginChange}
+                    placeholder="business@email.com"
                     required
-                    style={{ paddingRight: '2.5rem', width: '12rem' }}
+                    style={{ width: '12rem' }}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: '6rem',
-                      top: '60%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      color: '#6b7280',
-                      cursor: 'pointer',
-                      padding: '0.25rem'
-                    }}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
                 </div>
-                <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                  6文字以上の英数字を組み合わせてください
-                </p>
-              </div>
 
-              {/* 事業所情報は後で設定する旨を案内 */}
+                <div style={{ textAlign: 'center' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
+                    <Lock size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
+                    パスワード
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <Input
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={loginData.password}
+                      onChange={handleLoginChange}
+                      placeholder="password"
+                      required
+                      style={{ paddingRight: '2.5rem', width: '12rem' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '6rem',
+                        top: '60%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: '#6b7280',
+                        cursor: 'pointer',
+                        padding: '0.25rem'
+                      }}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  loading={loading}
+                  className="w-full cta-primary"
+                  style={{ 
+                    width: '100%', 
+                    justifyContent: 'center',
+                    padding: '0.75rem 1rem',
+                    fontSize: '1rem',
+                    fontWeight: 600
+                  }}
+                >
+                  {loading ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ 
+                        width: '1rem', 
+                        height: '1rem', 
+                        border: '2px solid transparent',
+                        borderTop: '2px solid currentColor',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }}></div>
+                      ログイン中...
+                    </div>
+                  ) : (
+                    'ログイン'
+                  )}
+                </Button>
+
+                <div style={{ textAlign: 'center' }}>
+                  <a 
+                    href="#"
+                    onClick={handleForgotPasswordClick} 
+                    style={{ 
+                      fontSize: '0.875rem', 
+                      color: '#6b7280', 
+                      textDecoration: 'none',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={(e) => (e.target as HTMLAnchorElement).style.color = '#22c55e'}
+                    onMouseLeave={(e) => (e.target as HTMLAnchorElement).style.color = '#6b7280'}
+                  >
+                    パスワードをお忘れの場合
+                  </a>
+                </div>
+              </form>
+            )}
+
+            {activeTab === 'register' && (
+              <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
+                    <User size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
+                    担当者名 <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <Input
+                    name="fullName"
+                    type="text"
+                    value={registerData.fullName}
+                    onChange={handleRegisterChange}
+                    placeholder="山田 太郎"
+                    required
+                    style={{ width: '12rem' }}
+                  />
+                  <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                    事業所の担当者名を入力してください
+                  </p>
+                </div>
+
+                <div style={{ textAlign: 'center' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
+                    <Mail size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
+                    メールアドレス <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <Input
+                    name="email"
+                    type="email"
+                    value={registerData.email}
+                    onChange={handleRegisterChange}
+                    placeholder="business@email.com"
+                    required
+                    style={{ width: '12rem' }}
+                  />
+                </div>
+
+                <div style={{ textAlign: 'center' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151', marginBottom: '0.5rem' }}>
+                    <Lock size={16} style={{ display: 'inline-block', marginRight: '0.5rem', verticalAlign: 'middle' }} />
+                    パスワード <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <Input
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={registerData.password}
+                      onChange={handleRegisterChange}
+                      placeholder="password"
+                      required
+                      style={{ paddingRight: '2.5rem', width: '12rem' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '6rem',
+                        top: '60%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: '#6b7280',
+                        cursor: 'pointer',
+                        padding: '0.25rem'
+                      }}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                    6文字以上の英数字を組み合わせてください
+                  </p>
+                </div>
+                
+                <div style={{ 
+                  padding: '1rem', 
+                  background: '#f0fdf4', 
+                  borderRadius: '0.5rem',
+                  fontSize: '0.875rem',
+                  color: '#166534',
+                  border: '1px solid #bbf7d0'
+                }}>
+                  <p style={{ margin: '0 0 0.5rem 0', fontWeight: 500 }}>
+                    事業所情報について
+                  </p>
+                  <p style={{ margin: 0, fontSize: '0.8rem' }}>
+                    事業所名・住所・サービス詳細などは、アカウント作成後にマイページで設定いただけます。
+                  </p>
+                </div>
+
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  loading={loading || authLoading}
+                  className="w-full cta-primary"
+                  disabled={loading || authLoading}
+                  style={{ 
+                    width: '100%', 
+                    justifyContent: 'center',
+                    padding: '0.75rem 1rem',
+                    fontSize: '1rem',
+                    fontWeight: 600
+                  }}
+                >
+                  {loading || authLoading ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ 
+                        width: '1rem', 
+                        height: '1rem', 
+                        border: '2px solid transparent',
+                        borderTop: '2px solid currentColor',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }}></div>
+                      アカウント作成中...
+                    </div>
+                  ) : (
+                    '事業者アカウント作成'
+                  )}
+                </Button>
+                
+                <div style={{ 
+                  padding: '1rem', 
+                  background: '#f9fafb', 
+                  borderRadius: '0.5rem',
+                  fontSize: '0.75rem',
+                  color: '#6b7280',
+                  textAlign: 'center'
+                }}>
+                  アカウント作成により、
+                  <a href="/terms" style={{ color: '#22c55e', textDecoration: 'none' }}>利用規約</a>
+                  と
+                  <a href="/privacy" style={{ color: '#22c55e', textDecoration: 'none' }}>プライバシーポリシー</a>
+                  に同意したものとみなされます
+                </div>
+              </form>
+            )}
+
+            {activeTab === 'login' && (
               <div style={{ 
+                marginTop: '1.5rem', 
                 padding: '1rem', 
                 background: '#f0fdf4', 
                 borderRadius: '0.5rem',
-                fontSize: '0.875rem',
-                color: '#166534',
+                textAlign: 'center',
                 border: '1px solid #bbf7d0'
               }}>
-                <p style={{ margin: '0 0 0.5rem 0', fontWeight: 500 }}>
-                  事業所情報について
+                <p style={{ fontSize: '0.875rem', color: '#166534', margin: '0 0 0.5rem 0', fontWeight: 500 }}>
+                  まずはサービスを確認してみませんか？
                 </p>
-                <p style={{ margin: 0, fontSize: '0.8rem' }}>
-                  事業所名・住所・サービス詳細などは、アカウント作成後にマイページで設定いただけます。
-                </p>
+                <Link 
+                  href="/" 
+                  style={{ 
+                    fontSize: '0.875rem', 
+                    color: '#22c55e', 
+                    textDecoration: 'none',
+                    fontWeight: 500
+                  }}
+                >
+                  事業所検索を見てみる →
+                </Link>
               </div>
-
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                loading={loading || authLoading}
-                className="w-full cta-primary"
-                disabled={loading || authLoading}
-                style={{ 
-                  width: '100%', 
-                  justifyContent: 'center',
-                  padding: '0.75rem 1rem',
-                  fontSize: '1rem',
-                  fontWeight: 600
-                }}
-              >
-                {loading || authLoading ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{ 
-                      width: '1rem', 
-                      height: '1rem', 
-                      border: '2px solid transparent',
-                      borderTop: '2px solid currentColor',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite'
-                    }}></div>
-                    アカウント作成中...
-                  </div>
-                ) : (
-                  '事業者アカウント作成'
-                )}
-              </Button>
-
-              {/* 利用規約・プライバシーポリシー */}
-              <div style={{ 
-                padding: '1rem', 
-                background: '#f9fafb', 
-                borderRadius: '0.5rem',
-                fontSize: '0.75rem',
-                color: '#6b7280',
-                textAlign: 'center'
-              }}>
-                アカウント作成により、
-                <a style={{ color: '#22c55e', textDecoration: 'none' }}>利用規約</a>
-                と
-                <a style={{ color: '#22c55e', textDecoration: 'none' }}>プライバシーポリシー</a>
-                に同意したものとみなされます
-              </div>
-            </form>
-          )}
-
-          {/* ゲストアクセス案内（ログインタブのみ） */}
-          {activeTab === 'login' && (
-            <div style={{ 
-              marginTop: '1.5rem', 
-              padding: '1rem', 
-              background: '#f0fdf4', 
-              borderRadius: '0.5rem',
-              textAlign: 'center',
-              border: '1px solid #bbf7d0'
-            }}>
-              <p style={{ fontSize: '0.875rem', color: '#166534', margin: '0 0 0.5rem 0', fontWeight: 500 }}>
-                まずはサービスを確認してみませんか？
-              </p>
-              <Link 
-                href="/" 
-                style={{ 
-                  fontSize: '0.875rem', 
-                  color: '#22c55e', 
-                  textDecoration: 'none',
-                  fontWeight: 500
-                }}
-              >
-                事業所検索を見てみる →
-              </Link>
-            </div>
-          )}
+            )}
           </div>
         </div>
 
-        {/* フッター情報 */}
         <div style={{ marginTop: '2rem', textAlign: 'center' }}>
           <p style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
             お困りの場合は{' '}
