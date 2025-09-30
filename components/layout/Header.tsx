@@ -70,12 +70,10 @@ function MobileHeader({
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const handleLogout = async () => {
-    setIsMenuOpen(false)
-    const { error } = await signOut()
-    if (error) {
-      console.error("ログアウトエラー:", error.message)
-      alert("ログアウトに失敗しました")
-    }
+    await signOut();
+  // ページ遷移や状態の更新はAuthProviderが自動的に行います。
+  // そのため、Headerコンポーネントでは特別なエラーハンドリングや
+  // 画面遷移の処理は不要になります。
   }
 
   const getTitle = () => {
@@ -356,11 +354,10 @@ function DesktopHeader({
   onHelpClick
 }: HeaderProps & { user?: any, userType?: string, myPagePath?: string }) {
   const handleLogout = async () => {
-    const { error } = await signOut()
-    if (error) {
-      console.error("ログアウトエラー:", error.message)
-      alert("ログアウトに失敗しました")
-    }
+    await signOut();
+  // ページ遷移や状態の更新はAuthProviderが自動的に行います。
+  // そのため、Headerコンポーネントでは特別なエラーハンドリングや
+  // 画面遷移の処理は不要になります。
   }
 
   return (

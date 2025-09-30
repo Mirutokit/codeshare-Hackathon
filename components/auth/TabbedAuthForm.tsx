@@ -33,16 +33,6 @@ const TabbedAuthForm: React.FC<TabbedAuthFormProps> = ({ defaultTab = 'login' })
   const [success, setSuccess] = useState<string | null>(null)
   const [isRedirecting, setIsRedirecting] = useState(false)
 
-  // 認証状態変更を監視してリダイレクト
-  useEffect(() => {
-  // 【ページガード】
-  // 認証済みユーザーがこのページにアクセスした場合、ホームページにリダイレクトする
-  // authLoadingが完了し、かつユーザーが存在する場合に実行
-  if (!authLoading && user) {
-    console.log('=== 認証済みユーザーを検出、ホームページへリダイレクトします ===');
-    router.replace('/');
-  }
-}, [user, authLoading, router]);
 
   const handleTabChange = (tab: 'login' | 'register') => {
     setActiveTab(tab)
@@ -51,66 +41,40 @@ const TabbedAuthForm: React.FC<TabbedAuthFormProps> = ({ defaultTab = 'login' })
     setShowPassword(false)
   }
 
-  // handleLoginSubmit 関数を大幅に修正します
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
 
-const handleLoginSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  setError(null);
-  setSuccess(null);
+    console.log('=== ログイン処理開始 ===')
 
-  try {
-    // Step 1: 認証 - Supabaseに本人確認をしてもらう
-    const { data: authData, error: signInError } = await signInWithEmail(
-      loginData.email,
-      loginData.password
-    );
-
-    if (signInError) {
-      // 認証自体が失敗した場合（パスワード間違いなど）
-      if (signInError.message.includes('Invalid login credentials')) {
-        setError('メールアドレスまたはパスワードが正しくありません。');
-      } else {
-        setError(`ログインに失敗しました: ${signInError.message}`);
-      }
-      setLoading(false);
-      return;
-    }
-
-    if (authData.user) {
-      // Step 2: 認可 - ユーザー種別を確認する
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles') // ★ あなたのプロフィールテーブル名に合わせてください
-        .select('user_type')
-        .eq('id', authData.user.id)
-        .single();
-
-      if (profileError || !profile) {
-        // プロファイルが見つからない重大なエラー
-        setError('ユーザー情報の取得に失敗しました。管理者にお問い合わせください。');
-        await supabase.auth.signOut(); // ★ セッションが残らないようにサインアウトさせる
-        setLoading(false);
-        return;
-      }
+    try {
+      const { error } = await signInWithEmail(loginData.email, loginData.password)
       
-      // Step 3: 権限を検証し、適切な処理を行う
-      if (profile.user_type === 'user') {
-        // 🎉 成功！利用者アカウントが利用者ページでログインした
-        setSuccess('ログイン成功！ホームページに移動します...');
-        router.replace('/');
+      if (error) {
+        console.error('ログインエラー:', error)
+        
+        if (error.message.includes('email_not_confirmed') || error.message.includes('Email not confirmed')) {
+          setError('メールアドレスの確認が完了していません。確認メールをご確認いただくか、開発環境の場合はSupabaseの設定をご確認ください。')
+        } else if (error.message.includes('Invalid login credentials')) {
+          setError('メールアドレスまたはパスワードが正しくありません。')
+        } else {
+          setError('ログインに失敗しました: ' + error.message)
+        }
       } else {
-        // 失敗！事業者アカウントなどが利用者ページでログインしようとした
-        setError('このアカウントは事業者用です。事業者向けログインページからログインしてください。');
-        await supabase.auth.signOut(); // ★ 間違ったセッションを即座に破棄する
-        setLoading(false);
+        console.log('=== ログイン成功、認証状態変更を待機 ===')
+        setSuccess('ログインに成功しました。認証状態を更新中...')
+        
+        // 認証状態の変更はuseEffectで処理される
+        // ここでは手動リダイレクトはしない
       }
+    } catch (err) {
+      console.error('ログイン処理例外:', err)
+      setError('ログインに失敗しました')
+    } finally {
+      setLoading(false)
     }
-  } catch (err) {
-    console.error('ログイン処理中に予期せぬエラーが発生しました:', err);
-    setError('予期せぬエラーが発生しました。');
-    setLoading(false);
   }
-};
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

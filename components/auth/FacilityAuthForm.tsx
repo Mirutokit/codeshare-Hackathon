@@ -3,10 +3,11 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
 import { ArrowLeft, Mail, Lock, Home, Eye, EyeOff, User, Building2, Users } from 'lucide-react'
-import { useAuth } from '@/lib/hooks/useAuth'
+//import { useAuth } from '@/lib/hooks/useAuth'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
 import { supabase } from '@/lib/supabase'
+import { useAuthContext } from '../providers/AuthProvider';
 
 interface FacilityAuthFormProps {
   defaultTab?: 'login' | 'register'
@@ -14,7 +15,7 @@ interface FacilityAuthFormProps {
 
 const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login' }) => {
   const router = useRouter()
-  const { user, signInWithEmail, signUpWithEmail, loading: authLoading } = useAuth()
+  const { user, signInWithEmail, signUpAsFacility, loading: authLoading } = useAuthContext();
   
   const [activeTab, setActiveTab] = useState<'login' | 'register'>(defaultTab)
   const [loginData, setLoginData] = useState({
@@ -31,18 +32,9 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [isRedirecting, setIsRedirecting] = useState(false)
+  
 
-  // 認証状態変更を監視してリダイレクト
-  useEffect(() => {
-  // 【ページガード】
-  // 認証済みユーザーがこのページにアクセスした場合、ホームページにリダイレクトする
-  // authLoadingが完了し、かつユーザーが存在する場合に実行
-  if (!authLoading && user) {
-    console.log('=== 認証済みユーザーを検出、ホームページへリダイレクトします ===');
-    router.replace('/');
-  }
-}, [user, authLoading, router]);
+
 
   const handleTabChange = (tab: 'login' | 'register') => {
     setActiveTab(tab)
@@ -51,187 +43,76 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
     setShowPassword(false)
   }
 
- 
-
-  // handleLoginSubmit 関数を大幅に修正します
-
-const handleLoginSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  setError(null);
-  setSuccess(null);
-
-  try {
-    // Step 1: 認証 - Supabaseに本人確認をしてもらう
-    const { data: authData, error: signInError } = await signInWithEmail(
-      loginData.email,
-      loginData.password
-    );
-
-    if (signInError) {
-      // 認証自体が失敗した場合（パスワード間違いなど）
-      if (signInError.message.includes('Invalid login credentials')) {
-        setError('メールアドレスまたはパスワードが正しくありません。');
-      } else {
-        setError(`ログインに失敗しました: ${signInError.message}`);
-      }
-      setLoading(false);
-      return;
-    }
-
-    if (authData.user) {
-      // Step 2: 認可 - ユーザー種別を確認する
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles') // ★ あなたのプロフィールテーブル名に合わせてください
-        .select('user_type')
-        .eq('id', authData.user.id)
-        .single();
-
-      if (profileError || !profile) {
-        // プロファイルが見つからない重大なエラー
-        setError('ユーザー情報の取得に失敗しました。管理者にお問い合わせください。');
-        await supabase.auth.signOut(); // ★ セッションが残らないようにサインアウトさせる
-        setLoading(false);
-        return;
-      }
-      
-      // Step 3: 権限を検証し、適切な処理を行う
-      if (profile.user_type === 'facility') {
-        // 🎉 成功！利用者アカウントが利用者ページでログインした
-        setSuccess('ログイン成功！ホームページに移動します...');
-        router.replace('/');
-      } else {
-        // 失敗！事業者アカウントなどが利用者ページでログインしようとした
-        setError('このアカウントは事業者用です。事業者向けログインページからログインしてください。');
-        await supabase.auth.signOut(); // ★ 間違ったセッションを即座に破棄する
-        setLoading(false);
-      }
-    }
-  } catch (err) {
-    console.error('ログイン処理中に予期せぬエラーが発生しました:', err);
-    setError('予期せぬエラーが発生しました。');
-    setLoading(false);
-  }
-};
-
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (loading || authLoading) return
-    
     setLoading(true)
     setError(null)
-    setSuccess(null)
 
-    // バリデーション（基本情報のみ）
-    if (!registerData.email || !registerData.password || !registerData.fullName) {
-      setError('すべての項目を入力してください')
-      setLoading(false)
-      return
-    }
-
-    if (registerData.password.length < 6) {
-      setError('パスワードは6文字以上で入力してください')
-      setLoading(false)
-      return
-    }
+    console.log('=== 事業者ログイン処理開始 ===')
 
     try {
-      console.log('=== 事業者新規登録開始（簡素化版） ===')
-
-      // Step 1: メタデータ付きで事業者ユーザー作成
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: registerData.email,
-        password: registerData.password,
-        options: {
-          data: {
-            full_name: registerData.fullName,
-            user_type: 'facility' // 事業者として識別
-          }
+      const { error } = await signInWithEmail(loginData.email, loginData.password)
+      
+      if (error) {
+        console.error('事業者ログインエラー:', error)
+        
+        if (error.message.includes('email_not_confirmed') || error.message.includes('Email not confirmed')) {
+          setError('メールアドレスの確認が完了していません。確認メールをご確認いただくか、開発環境の場合はSupabaseの設定をご確認ください。')
+        } else if (error.message.includes('Invalid login credentials')) {
+          setError('メールアドレスまたはパスワードが正しくありません。')
+        } else {
+          setError('ログインに失敗しました: ' + error.message)
         }
-      })
-
-      if (authError) {
-        console.error('認証エラー:', authError)
-        setError(getAuthErrorMessage(authError))
-        setLoading(false)
-        return
-      }
-
-      const userId = authData.user?.id
-      if (!userId) {
-        throw new Error('ユーザーIDが取得できませんでした')
-      }
-
-      console.log('Step 1完了 - ユーザーID:', userId)
-
-      // Step 2: handle_new_user処理待機
-      console.log('Step 2: handle_new_user処理待機中...')
-      await new Promise(resolve => setTimeout(resolve, 2000))
-
-      // Step 3: 基本的なfacilityレコードを作成（詳細は後でマイページで設定）
-      console.log('Step 3: 基本facility情報作成中...')
-      const { error: facilityError } = await supabase
-        .from('facilities')
-        .insert({
-          user_id: userId,
-          name: '事業所名を設定してください', // デフォルト値
-          description: '事業所の詳細情報を入力してください',
-          address: '住所を入力してください',
-          district: '新宿区', // デフォルト値
-          phone_number: null,
-          is_active: false // 詳細設定完了まで非公開
-        })
-
-      if (facilityError) {
-        console.error('facility作成エラー:', facilityError)
-        
-        // 手動でpublic.usersレコード作成を試行
-        console.log('手動でpublic.usersレコード作成を試行...')
-        await supabase.rpc('create_user_manually', {
-          p_user_id: userId,
-          p_email: registerData.email,
-          p_full_name: registerData.fullName,
-          p_user_type: 'facility'
-        })
-        
-        // 再度facilityレコード作成を試行
-        const { error: retryError } = await supabase
-          .from('facilities')
-          .insert({
-            user_id: userId,
-            name: '事業所名を設定してください',
-            description: '事業所の詳細情報を入力してください',
-            address: '住所を入力してください',
-            district: '新宿区',
-            phone_number: null,
-            is_active: false
-          })
-        
-        if (retryError) {
-          setError('事業者アカウント作成に失敗しました。サポートまでお問い合わせください。')
-          setLoading(false)
-          return
-        }
-      }
-
-      console.log('事業者アカウント作成完了')
-
-      if (authData.user?.email_confirmed_at) {
-        setSuccess('事業者アカウント作成が完了しました！事業者マイページで事業所情報を設定してください。')
-        setTimeout(() => router.push('/business/mypage'), 2000)
       } else {
-        setSuccess('事業者アカウント作成が完了しました！メール確認後、事業者マイページで事業所情報を設定してください。')
-        setTimeout(() => router.push('/auth/verify-email'), 2000)
+        console.log('=== 事業者ログイン成功、認証状態変更を待機 ===')
+        setSuccess('ログインに成功しました。認証状態を更新中...')
+        
+        // 認証状態の変更はuseEffectで処理される
       }
-
-    } catch (err: any) {
-      console.error('登録プロセスエラー:', err)
-      setError(err.message || 'アカウント作成に失敗しました')
+    } catch (err) {
+      console.error('事業者ログイン処理例外:', err)
+      setError('ログインに失敗しました')
     } finally {
       setLoading(false)
     }
   }
+
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    // バリデーション
+    if (!registerData.email || !registerData.password || !registerData.fullName) {
+      setError('すべての項目を入力してください');
+      setLoading(false);
+      return;
+    }
+    if (registerData.password.length < 6) {
+      setError('パスワードは6文字以上で入力してください');
+      setLoading(false);
+      return;
+    }
+    // ▲▲▲【修正点2】▲▲▲
+
+    // AuthProviderの新しい関数を呼び出す
+    const { data, error: authError } = await signUpAsFacility(
+      registerData.email,
+      registerData.password,
+      registerData.fullName
+    );
+
+    if (authError) {
+      setError(getAuthErrorMessage(authError)); // エラーメッセージ表示
+    } else {
+      // 成功メッセージを表示。リダイレクトはAuthProviderが自動で行う。
+      setSuccess('事業者アカウントの作成リクエストを受け付けました。メールを確認してください。');
+    }
+
+    setLoading(false);
+  };
+  // ▲▲▲【修正完了】▲▲▲
 
   // エラーメッセージのヘルパー関数
   const getAuthErrorMessage = (error: any): string => {
@@ -275,48 +156,7 @@ const handleLoginSubmit = async (e: React.FormEvent) => {
   return (
     <div className="container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem 1rem' }}>
       {/* 認証済みでリダイレクト中の場合は、リダイレクトオーバーレイを表示 */}
-      {isRedirecting && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10000
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '2rem',
-            borderRadius: '0.5rem',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-            textAlign: 'center',
-            border: '1px solid #e5e7eb'
-          }}>
-            <div style={{ 
-              width: '3rem', 
-              height: '3rem', 
-              border: '3px solid #22c55e',
-              borderTop: '3px solid transparent',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-              margin: '0 auto 1rem'
-            }}></div>
-            <p style={{ color: '#166534', fontWeight: 500, marginBottom: '0.5rem' }}>
-              事業者ログイン完了！
-            </p>
-            <p style={{ color: '#166534', fontWeight: 500, marginBottom: '0.5rem' }}>
-              事業者マイページに移動しています...
-            </p>
-            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-              {user?.email} としてログイン中
-            </p>
-          </div>
-        </div>
-      )}
+      
 
       <div style={{ maxWidth: '32rem', width: '100%' }}>
         {/* ヘッダーナビゲーション */}
