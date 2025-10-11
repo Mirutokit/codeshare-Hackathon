@@ -1,5 +1,7 @@
 # Care Connect
 
+使ってみる→ https://codeshare-hackathon-bw6g.vercel.app/
+
 ## プロジェクト概要
 
 「Care Connect」は、東京都内の障害福祉サービス事業所を検索し、詳細情報を閲覧できるWebアプリケーションです。利用者は、事業所名、地区、提供サービスの種類、空き状況などの条件で事業所を絞り込み検索できます。
