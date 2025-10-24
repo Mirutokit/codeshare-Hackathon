@@ -1,6 +1,14 @@
 # Care Connect
 
-使ってみる→ https://codeshare-hackathon-bw6g.vercel.app/
+<img width="1280" height="720" alt="logo3" src="https://github.com/user-attachments/assets/83717aa7-c33e-4f64-8093-e996aec2285e" />
+
+## 関連リンク 
+
+[説明資料](https://www.canva.com/design/DAG2rB_Px9s/4yV3ZJZcQUK3jZ0obRT1nA/view?utm_content=DAG2rB_Px9s&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h6dc62b06f7)
+
+[プレスリリース](https://odhackathon.metro.tokyo.lg.jp/collection/64/?year=2025) 
+
+[プロトタイプ公開URL](https://codeshare-hackathon-bw6g.vercel.app/) 
 
 ## プロジェクト概要
 
