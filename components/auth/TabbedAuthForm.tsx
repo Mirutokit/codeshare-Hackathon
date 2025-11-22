@@ -33,16 +33,20 @@ const TabbedAuthForm: React.FC<TabbedAuthFormProps> = ({ defaultTab = 'login' })
   const [success, setSuccess] = useState<string | null>(null)
   const [isRedirecting, setIsRedirecting] = useState(false)
 
+  const shouldRedirect = router.isReady && !!user && router.pathname !== '/'
+
   useEffect(() => {
-    if (user) {
-      setIsRedirecting(true)
-      const timer = setTimeout(() => {
-        router.replace('/')
-      }, 800)
-      return () => clearTimeout(timer)
-    }
-    setIsRedirecting(false)
-  }, [user, router])
+    if (!shouldRedirect) return
+    router.replace('/')
+  }, [shouldRedirect, router])
+
+  if (shouldRedirect) {
+    return (
+      <div className="container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p>ログイン済みです。ホームへ移動しています…</p>
+      </div>
+    )
+  }
 
 
   const handleTabChange = (tab: 'login' | 'register') => {
