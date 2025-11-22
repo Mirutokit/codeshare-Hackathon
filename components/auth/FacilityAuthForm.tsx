@@ -32,7 +32,18 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  
+  const [isRedirecting, setIsRedirecting] = useState(false)
+
+  useEffect(() => {
+    if (user) {
+      setIsRedirecting(true)
+      const timer = setTimeout(() => {
+        router.replace('/facility/dashboard')
+      }, 800)
+      return () => clearTimeout(timer)
+    }
+    setIsRedirecting(false)
+  }, [user, router])
 
 
 

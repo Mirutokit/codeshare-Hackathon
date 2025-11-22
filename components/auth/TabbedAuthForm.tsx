@@ -33,6 +33,17 @@ const TabbedAuthForm: React.FC<TabbedAuthFormProps> = ({ defaultTab = 'login' })
   const [success, setSuccess] = useState<string | null>(null)
   const [isRedirecting, setIsRedirecting] = useState(false)
 
+  useEffect(() => {
+    if (user) {
+      setIsRedirecting(true)
+      const timer = setTimeout(() => {
+        router.replace('/')
+      }, 800)
+      return () => clearTimeout(timer)
+    }
+    setIsRedirecting(false)
+  }, [user, router])
+
 
   const handleTabChange = (tab: 'login' | 'register') => {
     setActiveTab(tab)
