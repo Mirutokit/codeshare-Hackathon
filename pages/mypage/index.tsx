@@ -238,7 +238,7 @@ const UserMyPage: React.FC = () => {
 
         // usersテーブルから直接データ取得
         console.log('=== usersテーブルからデータ取得 ===')
-        
+
         let userRecord = null
         const { data: initialUserRecord, error: userError } = await supabase
           .from('users')

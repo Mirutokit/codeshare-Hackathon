@@ -21,12 +21,25 @@ const ConversationList: React.FC<ConversationListProps> = ({
 
   const getOtherPartyInfo = (conversation: Conversation) => {
     if (!user) return { name: '', subtitle: '' };
-    
-    // 利用者用のDMシステムなので、常に事業所名を表示
-    return {
-      name: conversation.facility?.name || '事業所',
-      subtitle: ''
-    };
+
+    // ログインユーザーのuser_typeで表示を切り替え
+    // 利用者の場合：事業所名を表示
+    // 事業者の場合：利用者名を表示
+    const isUserSide = conversation.user_id === user.id;
+
+    if (isUserSide) {
+      // 利用者側：事業所名を表示
+      return {
+        name: conversation.facility?.name || '事業所',
+        subtitle: ''
+      };
+    } else {
+      // 事業者側：利用者名を表示
+      return {
+        name: conversation.user?.full_name || '利用者',
+        subtitle: ''
+      };
+    }
   };
 
   const formatLastMessageTime = (timestamp: string) => {
@@ -97,8 +110,10 @@ const ConversationList: React.FC<ConversationListProps> = ({
         {conversations.map((conversation) => {
           const otherParty = getOtherPartyInfo(conversation);
           const isSelected = conversation.id === selectedConversationId;
-          const isUnread = conversation.last_message && 
-                          conversation.last_message.sender_id !== user?.id;
+          // 最後のメッセージが相手から送られてきて、かつ未読の場合
+          const isUnread = conversation.last_message &&
+                          conversation.last_message.sender_id !== user?.id &&
+                          !conversation.last_message.is_read;
 
           return (
             <button
@@ -161,13 +176,32 @@ const ConversationList: React.FC<ConversationListProps> = ({
                   }}>
                     {otherParty.name}
                   </h3>
-                  <span style={{
-                    fontSize: '0.75rem',
-                    color: '#6b7280',
-                    flexShrink: 0
-                  }}>
-                    {formatLastMessageTime(conversation.last_message_at)}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                    <span style={{
+                      fontSize: '0.75rem',
+                      color: '#6b7280'
+                    }}>
+                      {formatLastMessageTime(conversation.last_message_at)}
+                    </span>
+                    {/* 未読メッセージ数のバッジ（緑色） */}
+                    {conversation.unread_count > 0 && (
+                      <div style={{
+                        minWidth: '20px',
+                        height: '20px',
+                        borderRadius: '10px',
+                        background: '#22c55e',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        padding: '0 6px'
+                      }}>
+                        {conversation.unread_count > 99 ? '99+' : conversation.unread_count}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {otherParty.subtitle && (
@@ -184,29 +218,17 @@ const ConversationList: React.FC<ConversationListProps> = ({
                 )}
 
                 {conversation.last_message && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <p style={{
-                      margin: 0,
-                      fontSize: '0.875rem',
-                      color: '#6b7280',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      flex: 1
-                    }}>
-                      {conversation.last_message.sender_id === user?.id ? '自分: ' : ''}
-                      {conversation.last_message.content}
-                    </p>
-                    {isUnread && (
-                      <div style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        background: '#22c55e',
-                        flexShrink: 0
-                      }} />
-                    )}
-                  </div>
+                  <p style={{
+                    margin: 0,
+                    fontSize: '0.875rem',
+                    color: '#6b7280',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {conversation.last_message.sender_id === user?.id ? '自分: ' : ''}
+                    {conversation.last_message.content}
+                  </p>
                 )}
               </div>
             </button>

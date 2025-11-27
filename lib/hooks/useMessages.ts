@@ -53,11 +53,12 @@ export function useMessages() {
       setLoading(true);
       setError(null);
 
-      // 会話データを取得
+      // 会話データを取得（RLSポリシーで自動フィルタリング）
+      // 利用者：user_id = auth.uid() の会話
+      // 事業者：facilities.user_id または facilities.profile_id = auth.uid() の会話
       const { data: conversationData, error: convError } = await supabase
         .from('conversations')
         .select('*')
-        .eq('user_id', user.id)
         .order('last_message_at', { ascending: false });
 
       if (convError) throw convError;
@@ -70,34 +71,59 @@ export function useMessages() {
       // 各会話に対して、ユーザー情報、事業所情報、最後のメッセージを取得
       const conversationsWithDetails = await Promise.all(
         conversationData.map(async (conv) => {
-          // ユーザー情報を取得
-          const { data: userData } = await supabase
+          // ユーザー情報を取得（usersテーブルから）
+          const { data: userData, error: userError } = await supabase
             .from('users')
             .select('full_name')
             .eq('id', conv.user_id)
             .single();
 
+          if (userError) {
+            console.error('ユーザー情報取得エラー:', userError, 'user_id:', conv.user_id);
+          }
+
           // 事業所情報を取得
-          const { data: facilityData } = await supabase
+          const { data: facilityData, error: facilityError } = await supabase
             .from('facilities')
             .select('name')
             .eq('id', conv.facility_id)
             .single();
 
+          if (facilityError) {
+            console.error('事業所情報取得エラー:', facilityError, 'facility_id:', conv.facility_id);
+          }
+
           // 最後のメッセージを取得
           const { data: lastMessage } = await supabase
             .from('messages')
-            .select('content, sender_id')
+            .select('content, sender_id, is_read')
             .eq('conversation_id', conv.id)
             .order('created_at', { ascending: false })
             .limit(1)
             .single();
 
+          // この会話の未読メッセージ数を取得
+          const { count: unreadCount } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('conversation_id', conv.id)
+            .neq('sender_id', user.id)  // 自分が送信したメッセージは除外
+            .eq('is_read', false);       // 未読のみ
+
+          console.log('会話詳細:', {
+            conversation_id: conv.id,
+            user_id: conv.user_id,
+            userData: userData,
+            facilityData: facilityData,
+            unreadCount: unreadCount
+          });
+
           return {
             ...conv,
             user: userData,
             facility: facilityData,
-            last_message: lastMessage
+            last_message: lastMessage,
+            unread_count: unreadCount || 0
           };
         })
       );
@@ -128,7 +154,7 @@ export function useMessages() {
 
       if (error) throw error;
 
-      // 送信者情報を別途取得
+      // 送信者情報を別途取得（usersテーブルから）
       const messagesWithSender = await Promise.all(
         (messageData || []).map(async (message) => {
           const { data: senderData } = await supabase
@@ -206,12 +232,28 @@ export function useMessages() {
     if (!user) throw new Error('ログインが必要です');
 
     try {
+      // 会話情報を取得してreceiver_idを特定
+      const { data: convData, error: convError } = await supabase
+        .from('conversations')
+        .select('user_id, facility_id')
+        .eq('id', conversationId)
+        .single();
+
+      if (convError) throw convError;
+
+      // receiver_idを決定（送信者と異なる側）
+      const recipient_id = convData.user_id === user.id
+        ? convData.facility_id.toString()
+        : convData.user_id;
+
       const { data, error } = await supabase
         .from('messages')
         .insert({
           conversation_id: conversationId,
           sender_id: user.id,
-          content: content
+          recipient_id: recipient_id,
+          content: content,
+          is_read: false
         })
         .select()
         .single();
@@ -221,18 +263,21 @@ export function useMessages() {
       // 会話の最終メッセージ時刻を更新
       await supabase
         .from('conversations')
-        .update({ 
+        .update({
           last_message_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('id', conversationId);
+
+      // メッセージリストを更新
+      await fetchMessages(conversationId);
 
       return data;
     } catch (err: any) {
       console.error('メッセージ送信エラー:', err);
       throw err;
     }
-  }, [user]);
+  }, [user, fetchMessages]);
 
   // 未読メッセージ数を取得
   const getUnreadCount = useCallback(async () => {

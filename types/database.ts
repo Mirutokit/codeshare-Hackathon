@@ -142,13 +142,16 @@ export interface Bookmark {
 // メッセージ
 export interface Message {
   id: number
+  conversation_id: string
   sender_id: string
   recipient_id: string
+  receiver_id?: string  // useMessagesとの互換性のため
   facility_id?: number
   user_id?: number
   content: string
   is_read: boolean
   created_at: string
+  updated_at?: string
 }
 
 // 通知設定

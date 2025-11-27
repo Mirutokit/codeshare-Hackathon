@@ -51,9 +51,17 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversation, onClose }) 
 
   const getOtherPartyName = () => {
     if (!user) return '';
-    
-    // 利用者が見る場合は事業所名を表示
-    return conversation.facility?.name || '事業所';
+
+    // ログインユーザーのIDで判定
+    const isUserSide = conversation.user_id === user.id;
+
+    if (isUserSide) {
+      // 利用者側：事業所名を表示
+      return conversation.facility?.name || '事業所';
+    } else {
+      // 事業者側：利用者名を表示
+      return conversation.user?.full_name || '利用者';
+    }
   };
 
   return (
@@ -104,20 +112,23 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversation, onClose }) 
             <User size={20} />
           </div>
           <div>
-            <h3 style={{ 
-              margin: 0, 
-              fontSize: '1rem', 
-              fontWeight: 600, 
-              color: '#111827' 
+            <h3 style={{
+              margin: 0,
+              fontSize: '1rem',
+              fontWeight: 600,
+              color: '#111827'
             }}>
               {getOtherPartyName()}
             </h3>
-            <p style={{ 
-              margin: 0, 
-              fontSize: '0.875rem', 
-              color: '#6b7280' 
+            <p style={{
+              margin: 0,
+              fontSize: '0.875rem',
+              color: '#6b7280'
             }}>
-              {conversation.facility?.name && `事業所: ${conversation.facility.name}`}
+              {conversation.user_id === user?.id
+                ? (conversation.facility?.name && `事業所: ${conversation.facility.name}`)
+                : (conversation.user?.full_name && `利用者: ${conversation.user.full_name}`)
+              }
             </p>
           </div>
         </div>
@@ -148,7 +159,7 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversation, onClose }) 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {messages.map((message) => {
               const isMyMessage = message.sender_id === user?.id;
-              
+
               return (
                 <div
                   key={message.id}
@@ -160,31 +171,49 @@ const MessageThread: React.FC<MessageThreadProps> = ({ conversation, onClose }) 
                   <div style={{
                     maxWidth: '70%',
                     padding: '0.75rem 1rem',
-                    borderRadius: isMyMessage 
-                      ? '1rem 1rem 0.25rem 1rem' 
+                    borderRadius: isMyMessage
+                      ? '1rem 1rem 0.25rem 1rem'
                       : '1rem 1rem 1rem 0.25rem',
                     background: isMyMessage ? '#22c55e' : '#f3f4f6',
                     color: isMyMessage ? 'white' : '#111827'
                   }}>
-                    <p style={{ 
-                      margin: 0, 
+                    <p style={{
+                      margin: 0,
                       fontSize: '0.875rem',
                       lineHeight: '1.5'
                     }}>
                       {message.content}
                     </p>
-                    <p style={{
-                      margin: '0.25rem 0 0 0',
-                      fontSize: '0.75rem',
-                      opacity: 0.7
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.5rem',
+                      marginTop: '0.25rem'
                     }}>
-                      {new Date(message.created_at).toLocaleString('ja-JP', {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
+                      <p style={{
+                        margin: 0,
+                        fontSize: '0.75rem',
+                        opacity: 0.7
+                      }}>
+                        {new Date(message.created_at).toLocaleString('ja-JP', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                      {/* 自分が送信したメッセージのみ既読・未読を表示 */}
+                      {isMyMessage && (
+                        <span style={{
+                          fontSize: '0.7rem',
+                          opacity: 0.8,
+                          fontWeight: 500
+                        }}>
+                          {message.is_read ? '既読' : '未読'}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
