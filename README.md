@@ -81,12 +81,7 @@
     ```
 
 3.  **環境変数の設定**:
-    プロジェクトルートに `.env.local` ファイルを作成し、以下のSupabaseの環境変数を設定します。これらの値はあなたのSupabaseプロジェクトから取得してください。
-    ```bash
-    NEXT_PUBLIC_SUPABASE_URL=https://imaefzapfboaanomiybg.supabase.co/
-    NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImltYWVmemFwZmJvYWFub21peWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0MjI5NjksImV4cCI6MjA3MDk5ODk2OX0.iAfmdTYqy8fa9c8HKDAqbjYtBbfKBAfE8jfm3gj06Cg
-    SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImltYWVmemFwZmJvYWFub21peWJnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTQyMjk2OSwiZXhwIjoyMDcwOTk4OTY5fQ.1W7UmGKqPZzCk7SEckZC8C7o9mO3M4waICjDopDzl9M
-    ```
+    プロジェクトルートに `.env.local` ファイルを作成し、Supabaseの環境変数を設定します。
 
 5.  **開発サーバーの起動**:
     ```bash
