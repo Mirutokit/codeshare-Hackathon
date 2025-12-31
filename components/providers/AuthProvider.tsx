@@ -101,9 +101,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
+    // 複数タブ間でのセッション同期を監視
+    const handleStorageChange = async (e: StorageEvent) => {
+      console.log('Storage change detected:', e.key);
+
+      // Supabaseのセッション関連のキーが変更された場合
+      if (e.key?.includes('supabase.auth.token') || e.key === null) {
+        console.log('Session storage changed, refreshing session...');
+
+        // セッションを再取得
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (!isMounted) return;
+
+        if (error) {
+          console.error('セッション再取得エラー:', error);
+          setUser(null);
+          setSession(null);
+        } else if (session?.user) {
+          const enrichedUser = await enrichUserWithType(session.user);
+          setUser(enrichedUser);
+          setSession(session);
+        } else {
+          console.log('Session cleared, logging out...');
+          setUser(null);
+          setSession(null);
+        }
+      }
+    };
+
+    // storageイベントリスナーを追加（他のタブでの変更を検知）
+    // クライアント側でのみ実行
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorageChange);
+    }
+
     return () => {
       isMounted = false;
       subscription.unsubscribe();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', handleStorageChange);
+      }
     };
   }, []);
 
@@ -172,12 +210,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
+      console.log('Starting sign out process...');
+
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('サインアウトエラー:', error);
         return { error };
       }
-      // 状態は onAuthStateChange で自動的にクリアされます
+
+      // 念のため、LocalStorageから全てのSupabase関連のキーを削除
+      // クライアント側でのみ実行
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.includes('supabase')) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => {
+          console.log('Removing localStorage key:', key);
+          localStorage.removeItem(key);
+        });
+      }
+
+      // 即座にセッション状態をクリア
+      setUser(null);
+      setSession(null);
+
+      console.log('Sign out completed successfully');
+      // 状態は onAuthStateChange でも自動的にクリアされます
       return { error: null };
     } catch (error) {
       console.error('サインアウト失敗:', error);
