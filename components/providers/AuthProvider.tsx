@@ -8,7 +8,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signOut: () => Promise<void>;
+  signOut: () => Promise<{ error: Error | null }>;
   signUpWithEmail: (email: string, password: string, fullName: string) => Promise<any>;
   signInWithEmail: (email: string, password: string) => Promise<any>;
   signUpAsFacility: (email: string, password: string, fullName: string) => Promise<any>;
@@ -122,7 +122,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('サインアウトエラー:', error);
+        return { error };
+      }
+      // 状態は onAuthStateChange で自動的にクリアされます
+      return { error: null };
+    } catch (error) {
+      console.error('サインアウト失敗:', error);
+      return { error: error as Error };
+    }
   };
 
   const value = {

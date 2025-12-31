@@ -1,7 +1,7 @@
 // hooks/useAuth.ts - 認証状態管理フック
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase/client';
 import { getUserProfile } from '../lib/auth/auth-helpers';
 
 export const useAuth = () => {

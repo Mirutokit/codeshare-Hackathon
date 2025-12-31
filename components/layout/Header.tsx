@@ -70,10 +70,12 @@ function MobileHeader({
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const handleLogout = async () => {
-    await signOut();
-  // ページ遷移や状態の更新はAuthProviderが自動的に行います。
-  // そのため、Headerコンポーネントでは特別なエラーハンドリングや
-  // 画面遷移の処理は不要になります。
+    const { error } = await signOut();
+    if (error) {
+      console.error('ログアウトエラー:', error);
+      alert('ログアウトに失敗しました。もう一度お試しください。');
+    }
+    // ページ遷移や状態の更新はAuthProviderが自動的に行います。
   }
 
   const getTitle = () => {
@@ -354,10 +356,12 @@ function DesktopHeader({
   onHelpClick
 }: HeaderProps & { user?: any, userType?: string, myPagePath?: string }) {
   const handleLogout = async () => {
-    await signOut();
-  // ページ遷移や状態の更新はAuthProviderが自動的に行います。
-  // そのため、Headerコンポーネントでは特別なエラーハンドリングや
-  // 画面遷移の処理は不要になります。
+    const { error } = await signOut();
+    if (error) {
+      console.error('ログアウトエラー:', error);
+      alert('ログアウトに失敗しました。もう一度お試しください。');
+    }
+    // ページ遷移や状態の更新はAuthProviderが自動的に行います。
   }
 
   return (

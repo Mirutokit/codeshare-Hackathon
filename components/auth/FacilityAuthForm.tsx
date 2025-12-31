@@ -1,12 +1,11 @@
 // components/auth/FacilityAuthForm.tsx
-import React, { useState, useEffect } from 'react'
-import { useRouter } from 'next/router'
+import React, { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Mail, Lock, Home, Eye, EyeOff, User, Building2, Users } from 'lucide-react'
 //import { useAuth } from '@/lib/hooks/useAuth'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase/client'
 import { useAuthContext } from '../providers/AuthProvider';
 
 interface FacilityAuthFormProps {
@@ -14,8 +13,7 @@ interface FacilityAuthFormProps {
 }
 
 const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login' }) => {
-  const router = useRouter()
-  const { user, signInWithEmail, signUpAsFacility, loading: authLoading } = useAuthContext();
+  const { signInWithEmail, signUpAsFacility, loading: authLoading } = useAuthContext();
   
   const [activeTab, setActiveTab] = useState<'login' | 'register'>(defaultTab)
   const [loginData, setLoginData] = useState({
@@ -32,18 +30,8 @@ const FacilityAuthForm: React.FC<FacilityAuthFormProps> = ({ defaultTab = 'login
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [isRedirecting, setIsRedirecting] = useState(false)
 
-  useEffect(() => {
-    if (user) {
-      setIsRedirecting(true)
-      const timer = setTimeout(() => {
-        router.replace('/facility/dashboard')
-      }, 800)
-      return () => clearTimeout(timer)
-    }
-    setIsRedirecting(false)
-  }, [user, router])
+  // リダイレクト処理はAuthProviderで統一的に管理されます
 
 
 

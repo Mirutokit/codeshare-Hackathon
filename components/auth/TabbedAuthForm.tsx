@@ -6,7 +6,7 @@ import { ArrowLeft, Mail, Lock, Home, Eye, EyeOff, User } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase/client'
 
 interface TabbedAuthFormProps {
   defaultTab?: 'login' | 'register'

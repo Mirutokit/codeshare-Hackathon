@@ -17,7 +17,12 @@ const DashboardPage: React.FC = () => {
   }, [user, loading, router])
 
   const handleSignOut = async () => {
-    await signOut()
+    const { error } = await signOut()
+    if (error) {
+      console.error('ログアウトエラー:', error)
+      alert('ログアウトに失敗しました。')
+      return
+    }
     router.push('/auth/userlogin')
   }
 

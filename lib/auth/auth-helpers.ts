@@ -1,5 +1,5 @@
 // lib/auth/auth-helpers.ts - 認証ヘルパー関数
-import { supabase } from '../supabase';
+import { supabase } from '../supabase/client';
 
 // 認証状態をチェックする関数
 export const checkAuthState = async () => {

@@ -1,7 +1,7 @@
 // lib/hooks/useAuth.tsx - 統合版
 import { useContext } from 'react'
 import { AuthContext } from '@/components/providers/AuthProvider'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase/client'
 
 // AuthContextから値を取得するフック
 export function useAuth() {
