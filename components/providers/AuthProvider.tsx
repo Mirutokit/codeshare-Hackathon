@@ -28,6 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const router = useRouter();
 
   const enrichUserWithType = async (user: User): Promise<User> => {
@@ -47,10 +48,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    setLoading(true);
+    let isMounted = true;
+
+    // 初期セッション取得
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (!isMounted) return;
+
+        if (error) {
+          console.error('初期セッション取得エラー:', error);
+          setUser(null);
+          setSession(null);
+        } else if (session?.user) {
+          const enrichedUser = await enrichUserWithType(session.user);
+          setUser(enrichedUser);
+          setSession(session);
+        } else {
+          setUser(null);
+          setSession(null);
+        }
+
+        setLoading(false);
+      } catch (error) {
+        console.error('認証初期化エラー:', error);
+        if (isMounted) {
+          setUser(null);
+          setSession(null);
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeAuth();
+
+    // 認証状態変更の監視
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log(`AUTH EVENT: ${event}`);
+
+        if (!isMounted) return;
+
         if (session?.user) {
           const enrichedUser = await enrichUserWithType(session.user);
           setUser(enrichedUser);
@@ -59,29 +98,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
           setSession(null);
         }
-        setLoading(false);
       }
     );
+
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, []);
 
   // 認証状態に応じたリダイレクトを管理する統合されたuseEffect
   useEffect(() => {
-    if (loading) return; // 読み込み中はなにもしない
+    if (loading || isRedirecting) return; // 読み込み中またはリダイレクト中はなにもしない
 
-    if (user) { // ログイン後
-      if (router.pathname.startsWith('/auth')) {
-        const userType = user.user_metadata?.user_type;
-        router.push(userType === 'facility' ? '/business/mypage' : '/');
+    const handleRedirect = async () => {
+      if (user) { // ログイン後
+        if (router.pathname.startsWith('/auth')) {
+          setIsRedirecting(true);
+          const userType = user.user_metadata?.user_type;
+          const targetPath = userType === 'facility' ? '/business/mypage' : '/';
+          await router.replace(targetPath);
+          setIsRedirecting(false);
+        }
+      } else { // ログアウト後
+        if (!router.pathname.startsWith('/auth') && router.pathname !== '/') {
+          setIsRedirecting(true);
+          await router.replace('/');
+          setIsRedirecting(false);
+        }
       }
-    } else { // ログアウト後
-      if (!router.pathname.startsWith('/auth') && router.pathname !== '/') {
-        router.push('/');
-      }
-    }
-  }, [user, loading, router]);
+    };
+
+    handleRedirect();
+  }, [user, loading, router.pathname]); // router.pathname のみを監視
 
   const signInWithEmail = async (email: string, password: string) => {
     return supabase.auth.signInWithPassword({ email, password });
